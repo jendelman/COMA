@@ -8,5 +8,5 @@ Depends: R (>= 4.0)
 License: GPL-3
 RoxygenNote: 7.2.3
 Encoding: UTF-8
-Imports: ggplot2, rlang, CVXR
+Imports: ggplot2, rlang, CVXR, tidyr
 Suggests: knitr, rmarkdown
