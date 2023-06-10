@@ -4,14 +4,16 @@
 \alias{ocs}
 \title{Optimal Contribution Selection}
 \usage{
-ocs(data, K, F.max, solver = "ECOS")
+ocs(parents, ploidy, K, dF, solver = "ECOS")
 }
 \arguments{
-\item{data}{Input data frame (see Details)}
+\item{parents}{input data frame (see Details)}
 
-\item{K}{kinship matrix to control inbreeding}
+\item{ploidy}{ploidy}
 
-\item{F.max}{maximum inbreeding coefficient (vector allowed)}
+\item{K}{kinship matrix}
+
+\item{dF}{inbreeding rate (can be vector of values)}
 
 \item{solver}{solver for CVXR (default is "ECOS")}
 }
@@ -26,5 +28,7 @@ list containing
 Optimize the contribution of each individual to the next generation
 }
 \details{
-The data.frame \code{data} has four mandatory columns: id, merit, min, max. An optional fifth column specifies the sex of the individual as "M" (male) or "F" (female).
+The data.frame \code{parents} can have up to five columns: id, merit, min, max, female. Min and max are real numbers between 0 and 1 specifying the minimum and maximum contribution for each parent. The "female" column is logical TRUE/FALSE. For hermaphroditic species, the last column is omitted.
+
+The average inbreeding coefficient of the current generation is based on all individuals in \code{K}.
 }

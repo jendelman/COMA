@@ -4,14 +4,18 @@
 \alias{oma}
 \title{Optimal Mate Allocation}
 \usage{
-oma(data, K, F.max, solver = "ECOS")
+oma(parents, matings = NULL, ploidy, K, dF, solver = "ECOS")
 }
 \arguments{
-\item{data}{Input data frame (see Details)}
+\item{parents}{parents data frame (see Details)}
 
-\item{K}{kinship matrix to control inbreeding}
+\item{matings}{matings data frame (see Details)}
 
-\item{F.max}{maximum inbreeding coefficient (vector allowed)}
+\item{ploidy}{ploidy}
+
+\item{K}{kinship matrix}
+
+\item{dF}{inbreeding rate (can be vector of values)}
 
 \item{solver}{solver for CVXR (default is "ECOS")}
 }
@@ -27,5 +31,7 @@ list containing
 Optimize the allocation for each mating
 }
 \details{
-The data.frame \code{data} has five columns: mother, father, min, max, merit
+The data frame \code{parents} needs columns id, min, max, with optional column female (logical) for separate sexes.
+
+The data.frame \code{matings} has five columns: female, male, merit, min, max. If omitted, the software creates all possible matings of \code{parents} and uses the average merit of the parents.
 }

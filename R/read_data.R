@@ -10,7 +10,7 @@
 #' @param ploidy even integer
 #' @param dominance TRUE/FALSE
 #' @param sex optional, data frame with columns id and sex ("M" or "F")
-#' @param matings data frame with four columns: mother, father, lower, upper
+#' @param matings optional, data frame with four columns: mother, father, lower, upper
 #' @param n.core multi-core evaluation
 #'
 #' @return list containing
@@ -103,6 +103,6 @@ read_data <- function(geno.file, ploidy, dominance, sex=NULL, matings=NULL, n.co
       }
       matings$merit <- matings$merit + as.numeric(effects[,2] %*% ans)
     }
-    return(list(K=K, ocs.data=ocs.data[,-2], oma.data=matings))
+    return(list(K=K, ocs.data=ocs.data[,-2], oma.data=matings[,c("mother","father","merit","min","max")]))
   }
 }

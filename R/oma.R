@@ -2,11 +2,15 @@
 #'
 #' Optimize the allocation for each mating
 #' 
-#' The data.frame \code{data} has five columns: mother, father, min, max, merit
-#' 
-#' @param data Input data frame (see Details)
-#' @param K kinship matrix to control inbreeding
-#' @param F.max maximum inbreeding coefficient (vector allowed)
+#' The data frame \code{parents} needs columns id, min, max, with optional column female (logical) for separate sexes.
+#'
+#' The data.frame \code{matings} has five columns: female, male, merit, min, max. If omitted, the software creates all possible matings of \code{parents} and uses the average merit of the parents.
+#'
+#' @param parents parents data frame (see Details)
+#' @param matings matings data frame (see Details)
+#' @param ploidy ploidy
+#' @param K kinship matrix 
+#' @param dF inbreeding rate (can be vector of values)
 #' @param solver solver for CVXR (default is "ECOS")
 #' 
 #' @return list containing
@@ -16,53 +20,101 @@
 #' \item{om}{matrix of optimal allocations for each mating}
 #' }
 #' @import CVXR
+#' @importFrom stats model.matrix
 #' @export
 #' 
-oma <- function(data, K, F.max, solver="ECOS") {
+oma <- function(parents, matings=NULL, ploidy, K, dF, solver="ECOS") {
   
-  m <- length(F.max)
-  n <- nrow(data)
-  H <- matrix(data$merit,nrow=1)
-  mating <- paste(data$mother,data$father,sep="/")
-  om <- matrix(as.numeric(NA),nrow=n,ncol=m,dimnames=list(mating,F.max))
-  response <- data.frame(F=numeric(m)*NA, merit=numeric(m)*NA)
-  Kvec <- matrix(apply(data[,c("mother","father")],1,function(z,K){K[z[1],z[2]]},K=K),nrow=1)
+  stopifnot(c("id","merit","min","max") %in% colnames(parents))
+  parents$id <- as.character(parents$id)
+  if ("female" %in% colnames(parents)) {
+    sexed <- TRUE
+    stopifnot(!duplicated(parents$id))
+    stopifnot(class(parents$female)=="logical")
+    stopifnot(sum(parents$female) > 0 & sum(!parents$female) > 0)
+    parents$female <- as.integer(parents$female)
+  } else {
+    sexed <- FALSE
+  }
+  stopifnot(parents$max <= 1)
+  stopifnot(parents$min >= 0)
+  
+  if (is.null(matings)) {
+    parent.id <- parents$id 
+    if (sexed) {
+      matings <- expand.grid(female=parent.id[parents$female==1],male=parent.id[parents$female==0])
+    } else {
+      matings <- expand.grid(female=parent.id,male=parent.id)
+    }
+    matings$merit <- (parents$merit[match(matings$female,parents$id)] + 
+      parents$merit[match(matings$male,parents$id)])/2
+    matings$min <- 0
+    matings$max <- 1
+  }
+  stopifnot(c("female","male","merit","min","max") %in% colnames(matings))
+  stopifnot(matings$max <= 1)
+  stopifnot(matings$min >= 0)
+  
+  m <- length(dF)
+  theta1 <- (ploidy/2-1)/(ploidy-1)
+  theta2 <- (ploidy-1)/(ploidy/2)
+  F.avg <- (ploidy*mean(diag(K))-1)/(ploidy-1)
+  n <- nrow(parents)
+  p <- nrow(matings)
+  
+  h.t <- matrix(matings$merit,nrow=1)
+  matings$id <- paste(matings$female,matings$male,sep="/")
+  parent.id <- sort(union(matings$female,matings$male))
+  ix <- match(parent.id,parents$id,nomatch=0)
+  if (any(ix==0))
+    stop("parents data.frame missing individuals in matings")
+  parents <- parents[ix,]
+  
+  matings$female <- factor(matings$female,levels=parent.id)
+  matings$male <- factor(matings$male,levels=parent.id)
+
+  M1 <- model.matrix(~female-1,matings)
+  M2 <- model.matrix(~male-1,matings)
+  M <- t((M1+M2)/2)
+  rownames(M) <- parent.id
+#  K2 <- crossprod(Z,K%*%Z)
+  
+  om <- matrix(as.numeric(NA),nrow=p,ncol=m,dimnames=list(matings$id,dF))
+  oc <- matrix(as.numeric(NA),nrow=n,ncol=m,dimnames=list(parents$id,dF))
+  response <- data.frame(dF.target=dF, dF.realized=numeric(m)*NA, merit=numeric(m)*NA)
+  
+  K <- K[parents$id,parents$id]
+  Kvec <- matrix(apply(matings[,c("female","male")],1,
+                       function(z,K){K[z[1],z[2]]},K=K),nrow=1)
   
   for (i in 1:m) {
-    x <- Variable(n)
-    objective <- Maximize(H%*%x)
-    constraints <- list(x >= data$min, 
-                        x <= data$max,
-                        sum(x)==1,
-                        Kvec%*%x <= F.max[i])
+    b2 <- theta2*(2-dF[i]-theta1)*dF[i] + theta2*(1-dF[i])*(1-dF[i]-theta1)*F.avg
+    b1 <- theta2*dF[i] + theta2*(1-dF[i])*F.avg + 2*theta1/ploidy
+    y <- Variable(n)
+    x <- Variable(p)
+    objective <- Maximize(h.t%*%x)
+    constraints <- 
+      list(y <= parents$max, y >= parents$min, y==M%*%x, 
+           x <= matings$max, x >= matings$min, sum(x)==1,
+           Kvec%*%x + 2*theta1*t(y)%*%diag(K) <= b1,
+           quad_form(y,K) <= b2)
+    if (sexed)
+      constraints <- c(constraints, sum(parents$female*y)==0.5)
     problem <- Problem(objective,constraints)
     result <- solve(problem,solver="ECOS")
     if (result$status=="optimal") {
+      y.opt <- result$getValue(y)
       x.opt <- result$getValue(x)
+      oc[,i] <- y.opt
       om[,i] <- x.opt
-      response$F[i] <- as.numeric(Kvec%*%x.opt)
-      response$merit[i] <- as.numeric(H%*%x.opt)
+      F1 <- as.numeric(Kvec%*%x.opt/theta2 + theta1*(ploidy*t(y.opt)%*%diag(K)-1)/(ploidy-1))
+      response$dF.realized[i] <- (F1-F.avg)/(1-F.avg)
+      response$merit[i] <- result$value
     }
   }
-  colnames(om) <- round(response$F,3)
-  
-  Fvec <- as.numeric(colnames(om))
-  ix <- which(!is.na(Fvec) & !duplicated(Fvec))
-  if (length(ix)==0) {
-    stop("No optimal solutions")
-  }
-  om <- om[,ix,drop=FALSE]
-  response <- response[ix,]
-  
-  id <- sort(union(data$mother,data$father))
-  data$mother <- factor(data$mother,levels=id)
-  data$father <- factor(data$father,levels=id)
-  oc <- apply(om,2,function(x){
-    maternal <- tapply(x,data$mother,sum,na.rm=T)
-    maternal[is.na(maternal)] <- 0
-    paternal <- tapply(x,data$father,sum,na.rm=T)
-    paternal[is.na(paternal)] <- 0
-    (maternal+paternal)/2
-  })
+  colnames(oc) <- round(response$dF.realized,3)
+  oc <- oc[,!is.na(colnames(oc))]
+  colnames(om) <- round(response$dF.realized,3)
+  om <- om[,!is.na(colnames(om))]
   return(list(response=response, om=om, oc=oc))
 }

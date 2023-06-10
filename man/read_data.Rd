@@ -15,7 +15,7 @@ read_data(geno.file, ploidy, dominance, sex = NULL, matings = NULL, n.core = 1)
 
 \item{sex}{optional, data frame with columns id and sex ("M" or "F")}
 
-\item{matings}{data frame with four columns: mother, father, lower, upper}
+\item{matings}{optional, data frame with four columns: mother, father, lower, upper}
 
 \item{n.core}{multi-core evaluation}
 }
