@@ -4,20 +4,20 @@
 #' 
 #' The first column of \code{geno.file} is marker name. The second column contains the additive effects for the breeding value parameterization. When \code{dominance=TRUE}, the third column contains (digenic) dominance effects. Subsequent columns contain the marker data for the population, coded as allele dosage, from 0 to ploidy. 
 #' 
-#' When \code{matings} is present, merit is predicted for all matings in the data frame. The columns "lower" and "upper" specify the limits (0-1) for the contribution of each mating.
+#' The default argument for \code{matings} is NULL, which leads to predictions for all possible matings (excluding selfs). To restrict the set of possible matings, pass a data.frame with four columns: female, male, min, max. The columns "min" and "max" specify the limits (0-1) for the contribution of each mating. To skip mate allocation, use \code{matings=data.frame()}.
 #'
 #' @param geno.file file with marker effects and genotypes
 #' @param ploidy even integer
 #' @param dominance TRUE/FALSE
-#' @param sex optional, data frame with columns id and sex ("M" or "F")
-#' @param matings optional, data frame with four columns: mother, father, lower, upper
+#' @param sex optional, data frame with columns id (character) and female (TRUE/FALSE)
+#' @param matings see Details 
 #' @param n.core multi-core evaluation
 #'
 #' @return list containing
 #' \describe{
 #' \item{K}{genomic kinship matrix}
-#' \item{ocs.data}{data frame with individual merits and limits}
-#' \item{oma.data}{data frame with mating merits and limits}
+#' \item{parents}{data frame with individual merits and limits}
+#' \item{matings}{data frame with mating merits and limits}
 #'}
 #' @export
 #' @importFrom utils read.csv
@@ -56,53 +56,66 @@ read_data <- function(geno.file, ploidy, dominance, sex=NULL, matings=NULL, n.co
   
   #predict merit
   #OCS
-  ocs.data <- data.frame(id=id, add=as.numeric(coeff %*% effects[,1]))
+  parents <- data.frame(id=id, add=as.numeric(coeff %*% effects[,1]))
   
   if (dominance) {
     Pmat <- kronecker(matrix(p,nrow=1,ncol=m),matrix(1,nrow=n,ncol=1))
     coeff.D <- -2*choose(ploidy,2)*Pmat^2 + 2*(ploidy-1)*Pmat*t(geno) - t(geno)*(t(geno)-1)
     coeff.D[is.na(coeff.D)] <- 0
     gamma <- (ploidy/2 - 1)/(ploidy - 1)
-    ocs.data$merit <- ocs.data$add + gamma*as.numeric(coeff.D %*% effects[,2])
+    parents$dom <- as.numeric(coeff.D %*% effects[,2])
+    parents$merit <- parents$add + gamma*parents$dom
   } else {
-    ocs.data$merit <- ocs.data$add
+    parents$merit <- parents$add
   }
   
   if (!is.null(sex)) {
-    colnames(sex) <- c("id","sex")
-    ocs.data <- merge(ocs.data,sex)
+    colnames(sex) <- c("id","female")
+    parents <- merge(parents,sex)
   }
   
-  EQz <- function(parents,ploidy,geno,p) {
-    p1 <- geno[,parents[1]]/ploidy
-    q1 <- 1-p1
-    p2 <- geno[,parents[2]]/ploidy
-    q2 <- 1-p2
-    -ploidy^2/4*((p1+p2)^2+(p1*q1+p2*q2)/(ploidy-1)) + 
-      ploidy*(p*(ploidy-1)+1/2)*(p1+p2) - ploidy*(ploidy-1)*p^2
+  MPH <- function(parents,ploidy,geno) {
+    Xi <- geno[,parents[1]]
+    Xj <- geno[,parents[2]]
+    ploidy/4/(ploidy-1)*((Xi-Xj)^2 + 2/ploidy*Xi*Xj - (Xi+Xj))
   }
   
-  if (is.null(matings)) {
-    return(list(K=K, ocs.data=ocs.data[,-2]))
-  } else {
+  if (is.null(matings) || nrow(matings)>0) {
+
     #OMA
-    matings$mother <- as.character(matings$mother)
-    matings$father <- as.character(matings$father)
-    matings$merit <- (ocs.data$add[match(matings$mother,ocs.data$id)] + 
-                        ocs.data$add[match(matings$father,ocs.data$id)])/2
+    if (is.null(matings)) {
+      if ("sex" %in% colnames(parents)) {
+        females <- parents$id[parents$female]
+        males <- parents$id[!parents$female]
+        matings <- data.frame(expand.grid(female=females,male=males,stringsAsFactors = F),
+                              min=0,max=1)
+      } else {
+        matings <- data.frame(expand.grid(female=id,male=id,min=0,max=1,stringsAsFactors = F))
+        matings <- matings[matings$female > matings$male,] 
+      }
+    }
+    matings$female <- as.character(matings$female)
+    matings$male <- as.character(matings$male)
+    matings$merit <- (parents$add[match(matings$female,parents$id)] +
+                        parents$dom[match(matings$female,parents$id)] +
+                        parents$add[match(matings$male,parents$id)] +
+                        parents$dom[match(matings$male,parents$id)])/2
     if (dominance) {
       mate.list <- split(as.matrix(matings[,1:2]),f=1:nrow(matings))
       if (n.core > 1) {
         cl <- makeCluster(n.core)
         clusterExport(cl=cl,varlist=NULL)
-        ans <- parSapply(cl=cl,X=mate.list,EQz,ploidy=ploidy,geno=geno,p=p)
+        ans <- parSapply(cl=cl,X=mate.list,MPH,ploidy=ploidy,geno=geno)
         stopCluster(cl)
       } else {
-        ans <- sapply(mate.list,EQz,ploidy=ploidy,geno=geno,p=p)
-        ans[is.na(ans)] <- 0
+        ans <- sapply(mate.list,MPH,ploidy=ploidy,geno=geno)
+        #ans[is.na(ans)] <- 0
       }
-      matings$merit <- matings$merit + as.numeric(effects[,2] %*% ans)
+      matings$merit <- matings$merit + as.numeric(crossprod(ans,effects[,2]))
     }
-    return(list(K=K, ocs.data=ocs.data[,-2], oma.data=matings[,c("mother","father","merit","min","max")]))
+    return(list(K=K, parents=parents[,-match(c("add","dom"),colnames(parents))], 
+                matings=matings[,c("female","male","merit","min","max")]))
+  } else {
+    return(list(K=K, parents=parents[,-2]))
   }
 }

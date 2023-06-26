@@ -13,9 +13,9 @@ read_data(geno.file, ploidy, dominance, sex = NULL, matings = NULL, n.core = 1)
 
 \item{dominance}{TRUE/FALSE}
 
-\item{sex}{optional, data frame with columns id and sex ("M" or "F")}
+\item{sex}{optional, data frame with columns id (character) and female (TRUE/FALSE)}
 
-\item{matings}{optional, data frame with four columns: mother, father, lower, upper}
+\item{matings}{see Details}
 
 \item{n.core}{multi-core evaluation}
 }
@@ -23,8 +23,8 @@ read_data(geno.file, ploidy, dominance, sex = NULL, matings = NULL, n.core = 1)
 list containing
 \describe{
 \item{K}{genomic kinship matrix}
-\item{ocs.data}{data frame with individual merits and limits}
-\item{oma.data}{data frame with mating merits and limits}
+\item{parents}{data frame with individual merits and limits}
+\item{matings}{data frame with mating merits and limits}
 }
 }
 \description{
@@ -33,5 +33,5 @@ Constructs the G matrix and predicts merit for OCS/OMA
 \details{
 The first column of \code{geno.file} is marker name. The second column contains the additive effects for the breeding value parameterization. When \code{dominance=TRUE}, the third column contains (digenic) dominance effects. Subsequent columns contain the marker data for the population, coded as allele dosage, from 0 to ploidy. 
 
-When \code{matings} is present, merit is predicted for all matings in the data frame. The columns "lower" and "upper" specify the limits (0-1) for the contribution of each mating.
+The default argument for \code{matings} is NULL, which leads to predictions for all possible matings (excluding selfs). To restrict the set of possible matings, pass a data.frame with four columns: female, male, min, max. The columns "min" and "max" specify the limits (0-1) for the contribution of each mating. To skip mate allocation, use \code{matings=data.frame()}.
 }

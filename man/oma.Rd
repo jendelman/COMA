@@ -4,7 +4,7 @@
 \alias{oma}
 \title{Optimal Mate Allocation}
 \usage{
-oma(parents, matings = NULL, ploidy, K, dF, solver = "ECOS")
+oma(parents, matings, ploidy, K, dF, solver = "ECOS")
 }
 \arguments{
 \item{parents}{parents data frame (see Details)}
@@ -31,7 +31,5 @@ list containing
 Optimize the allocation for each mating
 }
 \details{
-The data frame \code{parents} needs columns id, min, max, with optional column female (logical) for separate sexes.
-
-The data.frame \code{matings} has five columns: female, male, merit, min, max. If omitted, the software creates all possible matings of \code{parents} and uses the average merit of the parents.
+The data frame \code{parents} needs columns id, min, max, with optional column female (logical) for separate sexes. The data.frame \code{matings} has five columns: female, male, merit, min, max.
 }

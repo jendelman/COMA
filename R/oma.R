@@ -2,9 +2,7 @@
 #'
 #' Optimize the allocation for each mating
 #' 
-#' The data frame \code{parents} needs columns id, min, max, with optional column female (logical) for separate sexes.
-#'
-#' The data.frame \code{matings} has five columns: female, male, merit, min, max. If omitted, the software creates all possible matings of \code{parents} and uses the average merit of the parents.
+#' The data frame \code{parents} needs columns id, min, max, with optional column female (logical) for separate sexes. The data.frame \code{matings} has five columns: female, male, merit, min, max. 
 #'
 #' @param parents parents data frame (see Details)
 #' @param matings matings data frame (see Details)
@@ -23,7 +21,7 @@
 #' @importFrom stats model.matrix
 #' @export
 #' 
-oma <- function(parents, matings=NULL, ploidy, K, dF, solver="ECOS") {
+oma <- function(parents, matings, ploidy, K, dF, solver="ECOS") {
   
   stopifnot(c("id","merit","min","max") %in% colnames(parents))
   parents$id <- as.character(parents$id)
@@ -38,19 +36,6 @@ oma <- function(parents, matings=NULL, ploidy, K, dF, solver="ECOS") {
   }
   stopifnot(parents$max <= 1)
   stopifnot(parents$min >= 0)
-  
-  if (is.null(matings)) {
-    parent.id <- parents$id 
-    if (sexed) {
-      matings <- expand.grid(female=parent.id[parents$female==1],male=parent.id[parents$female==0])
-    } else {
-      matings <- expand.grid(female=parent.id,male=parent.id)
-    }
-    matings$merit <- (parents$merit[match(matings$female,parents$id)] + 
-      parents$merit[match(matings$male,parents$id)])/2
-    matings$min <- 0
-    matings$max <- 1
-  }
   stopifnot(c("female","male","merit","min","max") %in% colnames(matings))
   stopifnot(matings$max <= 1)
   stopifnot(matings$min >= 0)
@@ -113,8 +98,8 @@ oma <- function(parents, matings=NULL, ploidy, K, dF, solver="ECOS") {
     }
   }
   colnames(oc) <- round(response$dF.realized,3)
-  oc <- oc[,!is.na(colnames(oc))]
+  oc <- oc[,!is.na(colnames(oc)),drop=F]
   colnames(om) <- round(response$dF.realized,3)
-  om <- om[,!is.na(colnames(om))]
+  om <- om[,!is.na(colnames(om)),drop=F]
   return(list(response=response, om=om, oc=oc))
 }
