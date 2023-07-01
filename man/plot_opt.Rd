@@ -4,12 +4,12 @@
 \alias{plot_opt}
 \title{Plot Optimal Contributions}
 \usage{
-plot_opt(data, min.c)
+plot_opt(data, min.c = 0)
 }
 \arguments{
 \item{data}{matrix of optimal contributions}
 
-\item{min.c}{minimum contribution for plotting}
+\item{min.c}{minimum contribution/allocation for plotting}
 }
 \value{
 ggplot2 object

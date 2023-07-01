@@ -4,7 +4,7 @@
 \alias{ocs}
 \title{Optimal Contribution Selection}
 \usage{
-ocs(parents, ploidy, K, dF, solver = "ECOS")
+ocs(parents, ploidy, K, dF, min.c = 0, solver = "ECOS")
 }
 \arguments{
 \item{parents}{input data frame (see Details)}
@@ -14,6 +14,8 @@ ocs(parents, ploidy, K, dF, solver = "ECOS")
 \item{K}{kinship matrix}
 
 \item{dF}{inbreeding rate (can be vector of values)}
+
+\item{min.c}{minimum contribution}
 
 \item{solver}{solver for CVXR (default is "ECOS")}
 }
@@ -30,5 +32,7 @@ Optimize the contribution of each individual to the next generation
 \details{
 The data.frame \code{parents} can have up to five columns: id, merit, min, max, female. Min and max are real numbers between 0 and 1 specifying the minimum and maximum contribution for each parent. The "female" column is logical TRUE/FALSE. For hermaphroditic species, the last column is omitted.
 
-The average inbreeding coefficient of the current generation is based on all individuals in \code{K}.
+The average inbreeding coefficient of the current generation is based on all individuals in \code{K}, which may exceed the list of individuals in \code{parents}.
+
+After optimization, contributions less than \code{min.c} are set equal to zero, and the remainder are renormalized.
 }

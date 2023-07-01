@@ -3,7 +3,7 @@
 #' Plot Optimal Contributions
 #' 
 #' @param data matrix of optimal contributions
-#' @param min.c minimum contribution for plotting
+#' @param min.c minimum contribution/allocation for plotting
 #' 
 #' @return ggplot2 object
 #' 
@@ -11,19 +11,29 @@
 #' @importFrom tidyr pivot_longer
 #' @import ggplot2
 
-plot_opt <- function(data, min.c) {
-  dF <- as.numeric(colnames(data))
-  ix <- which(!is.na(dF) & !duplicated(dF))
-  if (length(ix)==0) {
+plot_opt <- function(data, min.c=0) {
+  j <- which(duplicated(colnames(data)) | is.na(colnames(data)))
+  if (length(j) > 0)
+    data <- data[,-j]
+  
+  j <- match("max",colnames(data))
+  if(ncol(data)==j) {
     stop("No optimal solutions")
   }
-  data <- data[,ix,drop=FALSE]
+  if (j==5) {
+    tmp <- paste(data$female,data$male,sep="/")
+  } else {
+    tmp <- data$id
+  }
+  data <- as.matrix(data[,(j+1):ncol(data),drop=FALSE])
+  rownames(data) <- tmp
+  
   dF <- as.numeric(colnames(data))
   m <- ncol(data)
   colnames(data) <- 1:m
   
   max.c <- apply(data,1,max)
-  ix <- which(max.c >= min.c)
+  ix <- which(max.c > min.c)
   data2 <- data[ix,,drop=FALSE]
   data2 <- data.frame(id=rownames(data2),data2,check.names=F,row.names = NULL)
   

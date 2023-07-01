@@ -4,7 +4,7 @@
 \alias{read_data}
 \title{Read data for OCS/OMA}
 \usage{
-read_data(geno.file, ploidy, dominance, sex = NULL, matings = NULL, n.core = 1)
+read_data(geno.file, ploidy, dominance, sex = NULL, matings, n.core = 1)
 }
 \arguments{
 \item{geno.file}{file with marker effects and genotypes}
@@ -31,7 +31,7 @@ list containing
 Constructs the G matrix and predicts merit for OCS/OMA
 }
 \details{
-The first column of \code{geno.file} is marker name. The second column contains the additive effects for the breeding value parameterization. When \code{dominance=TRUE}, the third column contains (digenic) dominance effects. Subsequent columns contain the marker data for the population, coded as allele dosage, from 0 to ploidy. 
+The first column of \code{geno.file} is marker name. The second column contains the additive effects for the breeding value parameterization, and when \code{dominance=TRUE}, the next column contains (digenic) dominance effects. The following column "p.ref" should contain allele frequencies for the reference population, which is needed to control genomic inbreeding. Subsequent columns contain the marker data for the population, coded as allele dosage, from 0 to ploidy. 
 
-The default argument for \code{matings} is NULL, which leads to predictions for all possible matings (excluding selfs). To restrict the set of possible matings, pass a data.frame with four columns: female, male, min, max. The columns "min" and "max" specify the limits (0-1) for the contribution of each mating. To skip mate allocation, use \code{matings=data.frame()}.
+The argument \code{matings} can be either (1) a character vector of genotype ids, in which case all possible matings of these individuals are generated (reciprocal matings excluded), or (2) a data.frame with four columns: female, male, min, max. The columns "min" and "max" specify the limits (0-1) for the contribution of each mating. To skip mate allocation entirely, use \code{matings=NULL}.
 }
