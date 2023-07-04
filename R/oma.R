@@ -62,6 +62,10 @@ oma <- function(parents, matings, ploidy, K, dF, min.c=0, solver="ECOS") {
 
   M1 <- model.matrix(~female-1,matings)
   M2 <- model.matrix(~male-1,matings)
+  
+  matings$female <- as.character(matings$female)
+  matings$male <- as.character(matings$male)
+  
   M <- t((M1+M2)/2)
   rownames(M) <- parent.id
   tmp <- matrix(as.numeric(NA),nrow=p,ncol=m)
@@ -76,7 +80,7 @@ oma <- function(parents, matings, ploidy, K, dF, min.c=0, solver="ECOS") {
   Fi <- matrix((ploidy*diag(K)-1)/(ploidy-1),nrow=1)
   Kvec <- matrix(apply(matings[,c("female","male")],1,
                        function(z,K){K[z[1],z[2]]},K=K),nrow=1)
-  
+  i=1
   for (i in 1:m) {
     theta1 <- ploidy*(3*ploidy/4-1)
     theta2 <- (ploidy/2-1)*(dF[i]*(ploidy-1)-ploidy/2)
@@ -115,5 +119,12 @@ oma <- function(parents, matings, ploidy, K, dF, min.c=0, solver="ECOS") {
   }
   colnames(oc)[4+1:m] <- round(response$dF1,3)
   colnames(om)[5+1:m] <- round(response$dF1,3)
+  max.c <- apply(om[,5+1:m,drop=FALSE],1,max)
+  ix <- which(max.c >= min.c)
+  om <- om[ix,,drop=FALSE]
+  max.c <- apply(oc[,4+1:m,drop=FALSE],1,max)
+  ix <- which(max.c >= min.c)
+  oc <- oc[ix,,drop=FALSE]
+  
   return(list(response=response, om=om, oc=oc))
 }

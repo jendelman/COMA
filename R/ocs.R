@@ -80,6 +80,9 @@ ocs <- function(parents, ploidy, K, dF, min.c=0, solver="ECOS") {
     }
   }
   colnames(oc)[4+1:m] <- response$dF1
+  max.c <- apply(oc[,4+1:m,drop=FALSE],1,max)
+  ix <- which(max.c >= min.c)
+  oc <- oc[ix,,drop=FALSE]
 
   return(list(response=response, oc=oc))
 }

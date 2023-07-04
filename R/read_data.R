@@ -7,6 +7,7 @@
 #' The argument \code{matings} can be either (1) a character vector of genotype ids, in which case all possible matings of these individuals are generated (reciprocal matings excluded), or (2) a data.frame with four columns: female, male, min, max. The columns "min" and "max" specify the limits (0-1) for the contribution of each mating. To skip mate allocation entirely, use \code{matings=NULL}.
 #'
 #' @param geno.file file with marker effects and genotypes
+#' @param kinship.file NULL
 #' @param ploidy even integer
 #' @param dominance TRUE/FALSE
 #' @param sex optional, data frame with columns id (character) and female (TRUE/FALSE)
@@ -24,7 +25,7 @@
 #' @importFrom parallel makeCluster clusterExport parSapply stopCluster
 
 
-read_data <- function(geno.file, ploidy, dominance, sex=NULL, matings, n.core=1) {
+read_data <- function(geno.file, kinship.file=NULL, ploidy, dominance, sex=NULL, matings, n.core=1) {
   
   data <- read.csv(file = geno.file,check.names=F,row.names=1)
   if (dominance) {
@@ -53,10 +54,18 @@ read_data <- function(geno.file, ploidy, dominance, sex=NULL, matings, n.core=1)
   #coeff <- scale(t(geno),scale=F)
   dimnames(coeff) <- list(id,markers)
   coeff[which(is.na(coeff))] <- 0
-  scale <- ploidy*sum(p*(1-p))
-  K <- tcrossprod(coeff)/scale/ploidy
-  w <- 1e-5 
-  K <- (1-w)*K + w*mean(diag(K))*diag(n)
+  
+  if (is.null(kinship.file)) {
+    scale <- ploidy*sum(p*(1-p))
+    K <- tcrossprod(coeff)/scale/ploidy
+    w <- 1e-5 
+    K <- (1-w)*K + w*mean(diag(K))*diag(n)
+  } else {
+    K <- as.matrix(read.csv(kinship.file,row.names=1))
+    colnames(K) <- rownames(K)
+    stopifnot(id %in% colnames(K))
+    K <- K[id,id]
+  }
   
   #predict merit
   #OCS

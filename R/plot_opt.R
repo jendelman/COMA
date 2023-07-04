@@ -33,7 +33,7 @@ plot_opt <- function(data, min.c=0) {
   colnames(data) <- 1:m
   
   max.c <- apply(data,1,max)
-  ix <- which(max.c > min.c)
+  ix <- which(max.c >= min.c)
   data2 <- data[ix,,drop=FALSE]
   data2 <- data.frame(id=rownames(data2),data2,check.names=F,row.names = NULL)
   
