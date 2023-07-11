@@ -4,10 +4,20 @@
 \alias{read_data}
 \title{Read data for OCS/OMA}
 \usage{
-read_data(geno.file, ploidy, dominance, sex = NULL, matings, n.core = 1)
+read_data(
+  geno.file,
+  kinship.file = NULL,
+  ploidy,
+  dominance,
+  sex = NULL,
+  matings,
+  n.core = 1
+)
 }
 \arguments{
 \item{geno.file}{file with marker effects and genotypes}
+
+\item{kinship.file}{NULL}
 
 \item{ploidy}{even integer}
 

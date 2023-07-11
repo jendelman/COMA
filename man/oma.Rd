@@ -4,7 +4,7 @@
 \alias{oma}
 \title{Optimal Mate Allocation}
 \usage{
-oma(parents, matings, ploidy, K, dF, min.c = 0, solver = "ECOS")
+oma(parents, matings, ploidy, K, dF, min.c = 0, solver = "ECOS", dF.min = NULL)
 }
 \arguments{
 \item{parents}{parents data frame (see Details)}
@@ -20,13 +20,15 @@ oma(parents, matings, ploidy, K, dF, min.c = 0, solver = "ECOS")
 \item{min.c}{minimum allocation}
 
 \item{solver}{solver for CVXR (default is "ECOS")}
+
+\item{dF.min}{minimum inbreeding rate}
 }
 \value{
 list containing
 \describe{
-\item{response}{data frame with F and merit}
-\item{oc}{matrix of optimal contributions for each individual}
-\item{om}{matrix of optimal allocations for each mating}
+\item{response}{data frame with merit and dF}
+\item{oc}{data frame of optimum contributions for each individual}
+\item{om}{data frame of optimum allocations for each mating}
 }
 }
 \description{

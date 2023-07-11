@@ -13,18 +13,20 @@
 #' @param dF inbreeding rate (can be vector of values)
 #' @param min.c minimum allocation
 #' @param solver solver for CVXR (default is "ECOS")
+#' @param dF.min minimum inbreeding rate
 #' 
 #' @return list containing
 #' \describe{
-#' \item{response}{data frame with F and merit}
-#' \item{oc}{matrix of optimal contributions for each individual}
-#' \item{om}{matrix of optimal allocations for each mating}
+#' \item{response}{data frame with merit and dF}
+#' \item{oc}{data frame of optimum contributions for each individual}
+#' \item{om}{data frame of optimum allocations for each mating}
 #' }
 #' @import CVXR
 #' @importFrom stats model.matrix
 #' @export
 #' 
-oma <- function(parents, matings, ploidy, K, dF, min.c=0, solver="ECOS") {
+oma <- function(parents, matings, ploidy, K, dF, min.c=0, solver="ECOS",
+                dF.min=NULL) {
   
   stopifnot(c("id","merit","min","max") %in% colnames(parents))
   parents$id <- as.character(parents$id)
@@ -86,6 +88,8 @@ oma <- function(parents, matings, ploidy, K, dF, min.c=0, solver="ECOS") {
     theta2 <- (ploidy/2-1)*(dF[i]*(ploidy-1)-ploidy/2)
     theta3 <- ploidy/2*(ploidy-1)*(1-dF[i])
     RHS1 <- (ploidy-1)*(dF[i]+(1-dF[i])*F.avg)
+    if (!is.null(dF.min))
+      LHS1 <- (ploidy-1)*(dF.min+(1-dF.min)*F.avg)
     RHS2 <- (ploidy-1)^2*dF[i]
     y <- Variable(n)
     x <- Variable(p)
@@ -95,6 +99,9 @@ oma <- function(parents, matings, ploidy, K, dF, min.c=0, solver="ECOS") {
            x <= matings$max, x >= matings$min, sum(x)==1,
            (ploidy/2)*Kvec%*%x + (ploidy/2-1)*Fi%*%y <= RHS1,
            theta1*quad_form(y,K) + theta2*Fi%*%y - theta3*Kvec%*%x <= RHS2)
+    if (!is.null(dF.min)) {
+      constraints <- c(constraints, LHS1 <= (ploidy/2)*Kvec%*%x + (ploidy/2-1)*Fi%*%y)
+    }
     if (sexed)
       constraints <- c(constraints, sum(parents$female*y)==0.5)
     problem <- Problem(objective,constraints)
