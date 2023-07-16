@@ -36,6 +36,8 @@ read_data <- function(geno.file, kinship.file=NULL, ploidy, dominance,
   
   if (is.null(kinship.file)) {
     p <- as.numeric(data[,as.integer(dominance)+2])
+  } else {
+    p <- apply(geno,1,mean,na.rm=T)/ploidy
   }
     
   rownames(geno) <- rownames(data)
