@@ -2,7 +2,7 @@
 #' 
 #' Constructs the G matrix and predicts merit for OCS/OMA
 #' 
-#' The first column of \code{geno.file} is marker name. The second column contains the additive effects for the breeding value parameterization, and when \code{dominance=TRUE}, the next column contains (digenic) dominance effects. The following column "p.ref" should contain allele frequencies for the reference population, which is needed to control genomic inbreeding. Subsequent columns contain the marker data for the population, coded as allele dosage, from 0 to ploidy. 
+#' The first column of \code{geno.file} is marker name. The second column contains the additive effects for the breeding value parameterization, and when \code{dominance=TRUE}, the next column contains (digenic) dominance effects. When \code{kinship.file=NULL}, the software assumes the following column "p.ref" contains allele frequencies for the reference population to control genomic inbreeding. Subsequent columns contain the marker data for the population, coded as allele dosage, from 0 to ploidy. 
 #' 
 #' The argument \code{matings} can be either (1) a character vector of genotype ids, in which case all possible matings of these individuals are generated (reciprocal matings excluded), or (2) a data.frame with four columns: female, male, min, max. The columns "min" and "max" specify the limits (0-1) for the contribution of each mating. To skip mate allocation entirely, use \code{matings=NULL}.
 #'
@@ -25,18 +25,19 @@
 #' @importFrom parallel makeCluster clusterExport parSapply stopCluster
 
 
-read_data <- function(geno.file, kinship.file=NULL, ploidy, dominance, sex=NULL, matings, n.core=1) {
+read_data <- function(geno.file, kinship.file=NULL, ploidy, dominance, 
+                      sex=NULL, matings, n.core=1) {
   
   data <- read.csv(file = geno.file,check.names=F,row.names=1)
-  if (dominance) {
-    effects <- as.matrix(data[,1:2])
-    geno <- as.matrix(data[,-(1:3)])
-    p <- as.numeric(data[,3])
-  } else {
-    effects <- as.matrix(data[,1,drop=FALSE])
-    geno <- as.matrix(data[,-(1:2)])
-    p <- as.numeric(data[,2])
+  geno.start <- 2 + as.integer(dominance) + as.integer(is.null(kinship.file))
+  
+  effects <- as.matrix(data[,1:(as.integer(dominance)+1),drop=FALSE])
+  geno <- as.matrix(data[,geno.start:ncol(data)])
+  
+  if (is.null(kinship.file)) {
+    p <- as.numeric(data[,as.integer(dominance)+2])
   }
+    
   rownames(geno) <- rownames(data)
   n <- ncol(geno)
   id <- colnames(geno)

@@ -66,22 +66,24 @@ ocs <- function(parents, ploidy, K, dF, min.c=0, solver="ECOS") {
     if (result$status=="optimal") {
       y.opt <- result$getValue(y)
       y.opt[y.opt < min.c] <- 0
-      y.opt <- y.opt/sum(y.opt)
-      oc[,4+i] <- y.opt
-      if (sexed) {
-        y.f <- parents$female*y.opt
-        y.m <- (1-parents$female)*y.opt
-      } else {
-        y.f <- y.m <- y.opt
+      if (sum(y.opt) > 0) {
+        y.opt <- y.opt/sum(y.opt)
+        oc[,4+i] <- y.opt
+        if (sexed) {
+          y.f <- parents$female*y.opt
+          y.m <- (1-parents$female)*y.opt
+        } else {
+          y.f <- y.m <- y.opt
+        }
+        F.t1 <- as.numeric((ploidy/2)*crossprod(y.f,K%*%y.m) + (ploidy/2-1)*Fi%*%y.opt)/(ploidy-1)
+        response$dF1[i] <- round((F.t1-F.avg)/(1-F.avg),3)
+        response$merit[i] <- result$value
       }
-      F.t1 <- as.numeric((ploidy/2)*crossprod(y.f,K%*%y.m) + (ploidy/2-1)*Fi%*%y.opt)/(ploidy-1)
-      response$dF1[i] <- round((F.t1-F.avg)/(1-F.avg),3)
-      response$merit[i] <- result$value
     }
   }
   colnames(oc)[4+1:m] <- response$dF1
   max.c <- apply(oc[,4+1:m,drop=FALSE],1,max)
-  ix <- which(max.c >= min.c)
+  ix <- which(!is.na(max.c) & max.c > 0)
   oc <- oc[ix,,drop=FALSE]
 
   return(list(response=response, oc=oc))

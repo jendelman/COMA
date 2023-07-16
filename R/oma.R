@@ -109,28 +109,26 @@ oma <- function(parents, matings, ploidy, K, dF, min.c=0, solver="ECOS",
     if (result$status=="optimal") {
       x.opt <- result$getValue(x)
       x.opt[x.opt < min.c] <- 0
-      x.opt <- x.opt/sum(x.opt)
-      y.opt <- M%*%x.opt
-      
-      oc[,4+i] <- y.opt
-      om[,5+i] <- x.opt
-      
-      F.t1 <- as.numeric((ploidy/2)*Kvec%*%x.opt + (ploidy/2-1)*Fi%*%y.opt)/(ploidy-1)
-      response$dF1[i] <- round((F.t1-F.avg)/(1-F.avg),3)
-      
-      F.t2 <- as.numeric(ploidy*(3*ploidy/4-1)*crossprod(y.opt,K%*%y.opt) + (ploidy/2-1)^2*Fi%*%y.opt)/(ploidy-1)^2
-      response$dF2[i] <- round((F.t2-F.t1)/(1-F.t1),3)
-      
-      response$merit[i] <- result$value
+      if (sum(x.opt) > 0) {
+        x.opt <- x.opt/sum(x.opt)
+        y.opt <- M%*%x.opt
+        oc[,4+i] <- y.opt
+        om[,5+i] <- x.opt
+        F.t1 <- as.numeric((ploidy/2)*Kvec%*%x.opt + (ploidy/2-1)*Fi%*%y.opt)/(ploidy-1)
+        response$dF1[i] <- round((F.t1-F.avg)/(1-F.avg),3)
+        F.t2 <- as.numeric(ploidy*(3*ploidy/4-1)*crossprod(y.opt,K%*%y.opt) + (ploidy/2-1)^2*Fi%*%y.opt)/(ploidy-1)^2
+        response$dF2[i] <- round((F.t2-F.t1)/(1-F.t1),3)
+        response$merit[i] <- result$value
+      }
     }
   }
   colnames(oc)[4+1:m] <- round(response$dF1,3)
   colnames(om)[5+1:m] <- round(response$dF1,3)
   max.c <- apply(om[,5+1:m,drop=FALSE],1,max)
-  ix <- which(max.c >= min.c)
+  ix <- which(!is.na(max.c) & max.c > 0)
   om <- om[ix,,drop=FALSE]
   max.c <- apply(oc[,4+1:m,drop=FALSE],1,max)
-  ix <- which(max.c >= min.c)
+  ix <- which(!is.na(max.c) & max.c > 0)
   oc <- oc[ix,,drop=FALSE]
   
   return(list(response=response, om=om, oc=oc))
