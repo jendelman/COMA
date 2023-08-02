@@ -4,7 +4,7 @@
 \alias{ocs}
 \title{Optimal Contribution Selection}
 \usage{
-ocs(parents, ploidy, K, dF, min.c = 0, solver = "ECOS")
+ocs(parents, ploidy, K, dF, min.c = 0, dF.adapt = NULL, solver = "ECOS")
 }
 \arguments{
 \item{parents}{input data frame (see Details)}
@@ -13,17 +13,19 @@ ocs(parents, ploidy, K, dF, min.c = 0, solver = "ECOS")
 
 \item{K}{kinship matrix}
 
-\item{dF}{inbreeding rate (can be vector of values)}
+\item{dF}{maximum inbreeding rate}
 
 \item{min.c}{minimum contribution}
+
+\item{dF.adapt}{see Details}
 
 \item{solver}{solver for CVXR (default is "ECOS")}
 }
 \value{
 list containing
 \describe{
-\item{response}{data frame with F and merit}
-\item{oc}{matrix of optimal contributions for each F.max}
+\item{response}{named vector with realized dF and merit}
+\item{oc}{data frame of optimal contributions}
 }
 }
 \description{
@@ -34,5 +36,5 @@ The data.frame \code{parents} can have up to five columns: id, merit, min, max, 
 
 The average inbreeding coefficient of the current generation is based on all individuals in \code{K}, which may exceed the list of individuals in \code{parents}.
 
-After optimization, contributions less than \code{min.c} are set equal to zero, and the remainder are renormalized.
+After optimization, contributions less than \code{min.c} are set equal to zero, and the remainder are renormalized. The realized inbreeding rate can exceed the specified limit after applying this threshold. It is also possible that no feasible solution exists for the specified \code{dF}. In this case, argument \code{dF.adapt} can be used to find other solutions. It is a list with two named components: step, max. The software increases the dF limit by dF.adapt$step up to the smaller of dF.adapt$max or the realized value under the original dF, in an attempt to find a solution with less inbreeding.
 }

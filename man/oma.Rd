@@ -4,7 +4,16 @@
 \alias{oma}
 \title{Optimal Mate Allocation}
 \usage{
-oma(parents, matings, ploidy, K, dF, min.c = 0, solver = "ECOS", dF.min = NULL)
+oma(
+  parents,
+  matings,
+  ploidy,
+  K,
+  dF,
+  min.c = 0,
+  dF.adapt = NULL,
+  solver = "ECOS"
+)
 }
 \arguments{
 \item{parents}{parents data frame (see Details)}
@@ -15,20 +24,20 @@ oma(parents, matings, ploidy, K, dF, min.c = 0, solver = "ECOS", dF.min = NULL)
 
 \item{K}{kinship matrix}
 
-\item{dF}{inbreeding rate (can be vector of values)}
+\item{dF}{max inbreeding rate}
 
 \item{min.c}{minimum allocation}
 
-\item{solver}{solver for CVXR (default is "ECOS")}
+\item{dF.adapt}{see Details}
 
-\item{dF.min}{minimum inbreeding rate}
+\item{solver}{solver for CVXR (default is "ECOS")}
 }
 \value{
 list containing
 \describe{
-\item{response}{data frame with merit and dF}
-\item{oc}{data frame of optimum contributions for each individual}
-\item{om}{data frame of optimum allocations for each mating}
+\item{response}{named vector with realized dF and merit}
+\item{oc}{data frame of optimal contributions for each individual}
+\item{om}{data frame of optimal allocations for each mating}
 }
 }
 \description{
@@ -37,5 +46,5 @@ Optimize the allocation for each mating
 \details{
 The data frame \code{parents} needs columns id, min, max, with optional column female (logical) for separate sexes. The data.frame \code{matings} has five columns: female, male, merit, min, max. 
 
-After optimization, allocations less than \code{min.c} are set equal to zero, and the remainder are renormalized.
+After optimization, allocations less than \code{min.c} are set equal to zero, and the remainder are renormalized. The realized inbreeding rate can exceed the specified limit after applying this threshold. It is also possible that no feasible solution exists for the specified \code{dF}. In this case, argument \code{dF.adapt} can be used to find other solutions. It is a list with two named components: step, max. The software increases the dF limit by dF.adapt$step up to the smaller of dF.adapt$max or the realized value under the original dF, in an attempt to find a solution with less inbreeding.
 }

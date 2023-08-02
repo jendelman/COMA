@@ -6,24 +6,25 @@
 #' 
 #' The average inbreeding coefficient of the current generation is based on all individuals in \code{K}, which may exceed the list of individuals in \code{parents}.
 #' 
-#' After optimization, contributions less than \code{min.c} are set equal to zero, and the remainder are renormalized.
+#' After optimization, contributions less than \code{min.c} are set equal to zero, and the remainder are renormalized. The realized inbreeding rate can exceed the specified limit after applying this threshold. It is also possible that no feasible solution exists for the specified \code{dF}. In this case, argument \code{dF.adapt} can be used to find other solutions. It is a list with two named components: step, max. The software increases the dF limit by dF.adapt$step up to the smaller of dF.adapt$max or the realized value under the original dF, in an attempt to find a solution with less inbreeding. 
 #' 
 #' @param parents input data frame (see Details)
 #' @param ploidy ploidy
 #' @param K kinship matrix 
-#' @param dF inbreeding rate (can be vector of values)
+#' @param dF maximum inbreeding rate 
 #' @param min.c minimum contribution
+#' @param dF.adapt see Details
 #' @param solver solver for CVXR (default is "ECOS")
 #' 
 #' @return list containing
 #' \describe{
-#' \item{response}{data frame with F and merit}
-#' \item{oc}{matrix of optimal contributions for each F.max}
+#' \item{response}{named vector with realized dF and merit}
+#' \item{oc}{data frame of optimal contributions}
 #' }
 #' @import CVXR
 #' @export
 #' 
-ocs <- function(parents, ploidy, K, dF, min.c=0, solver="ECOS") {
+ocs <- function(parents, ploidy, K, dF, min.c=0, dF.adapt=NULL, solver="ECOS") {
   
   stopifnot(c("id","merit","min","max") %in% colnames(parents))
   parents$id <- as.character(parents$id)
@@ -39,52 +40,77 @@ ocs <- function(parents, ploidy, K, dF, min.c=0, solver="ECOS") {
   stopifnot(parents$max <= 1)
   stopifnot(parents$min >= 0)
   
-  m <- length(dF)
   Fi <- matrix((ploidy*diag(K)-1)/(ploidy-1),nrow=1)
   F.avg <- mean(as.numeric(Fi))
   n <- nrow(parents)
-  tmp <- matrix(as.numeric(NA),nrow=n,ncol=m)
-  colnames(tmp) <- dF
-  oc <- data.frame(parents,tmp,check.names=F)
-  response <- data.frame(dF.target=dF, dF1=numeric(m)*NA, 
-                         merit=numeric(m)*NA)
+  
+  oc <- data.frame(parents,y=numeric(n),check.names=F)
+  
   h.t <- matrix(parents$merit,nrow=1)
   K <- K[parents$id,parents$id]
   Fi <- matrix((ploidy*diag(K)-1)/(ploidy-1),nrow=1)
   
-  for (i in 1:m) {
-    RHS <- (ploidy-1)*(dF[i]+(1-dF[i])*F.avg)
-    y <- Variable(n)
-    objective <- Maximize(h.t%*%y)
+  y <- Variable(n)
+  objective <- Maximize(h.t%*%y)
+  
+  dF1 <- dF
+  dFr <- merit <- as.numeric(NA)
+  dF.best <- Inf
+  flag <- TRUE
+  
+  while (flag) { 
+    RHS <- (ploidy-1)*(dF1+(1-dF1)*F.avg)
     constraints <- 
-      list(y <= parents$max, y >= parents$min, sum(y)==1, 
-           (ploidy/2)*quad_form(y,K) + (ploidy/2-1)*Fi%*%y <= RHS)
+        list(y <= parents$max, y >= parents$min, sum(y)==1, 
+             (ploidy/2)*quad_form(y,K) + (ploidy/2-1)*Fi%*%y <= RHS)
     if (sexed)
       constraints <- c(constraints, sum(parents$female*y)==0.5)
+      
     problem <- Problem(objective,constraints)
     result <- solve(problem,solver="ECOS")
     if (result$status=="optimal") {
       y.opt <- result$getValue(y)
-      y.opt[y.opt < min.c] <- 0
+      ix <- which(y.opt < min.c)
+      if (length(ix) > 0)
+        y.opt[ix] <- 0
       if (sum(y.opt) > 0) {
         y.opt <- y.opt/sum(y.opt)
-        oc[,4+i] <- y.opt
+        
         if (sexed) {
           y.f <- parents$female*y.opt
           y.m <- (1-parents$female)*y.opt
         } else {
           y.f <- y.m <- y.opt
         }
-        F.t1 <- as.numeric((ploidy/2)*crossprod(y.f,K%*%y.m) + (ploidy/2-1)*Fi%*%y.opt)/(ploidy-1)
-        response$dF1[i] <- round((F.t1-F.avg)/(1-F.avg),3)
-        response$merit[i] <- result$value
+        
+        F.t1 <- as.numeric((ploidy/2)*crossprod(y.f,K%*%y.m) + 
+                             (ploidy/2-1)*Fi%*%y.opt)/(ploidy-1)
+        dFr <- (F.t1-F.avg)/(1-F.avg)
+        
+        if (dFr < dF.best) {
+          oc[,5] <- y.opt
+          merit <- result$value
+          dF.best <- dFr
+        }
+      } 
+    } 
+    
+    if (is.null(dF.adapt)) {
+      flag <- FALSE
+    } else {
+      if ((!is.na(merit) & dFr <= dF1) | (dF1 > min(dF.adapt$max,dF.best+dF.adapt$step))) {
+        flag <- FALSE
+      } else {
+        dF1 <- dF1 + dF.adapt$step
       }
     }
   }
-  colnames(oc)[4+1:m] <- response$dF1
-  max.c <- apply(oc[,4+1:m,drop=FALSE],1,max)
-  ix <- which(!is.na(max.c) & max.c > 0)
-  oc <- oc[ix,,drop=FALSE]
 
-  return(list(response=response, oc=oc))
+  if (is.na(merit)) {
+    return(list(response=c(dF=as.numeric(NA), merit=as.numeric(NA)), 
+                oc=oc[integer(0),]))
+  } else {
+    return(list(response=c(dF=dF.best, merit=merit), 
+                oc=oc[which(oc[,5] > 0),,drop=FALSE]))
+  }
 }
