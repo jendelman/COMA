@@ -1,6 +1,6 @@
 Package: COMA
 Title: Convex Optimization of Mate Allocation
-Version: 0.08
+Version: 0.10
 Author: Jeffrey B. Endelman
 Maintainer: Jeffrey Endelman <endelman@wisc.edu>
 Description: Convex Optimization of Mate Allocation
@@ -8,5 +8,5 @@ Depends: R (>= 4.0)
 License: GPL-3
 RoxygenNote: 7.2.3
 Encoding: UTF-8
-Imports: ggplot2, rlang, CVXR, tidyr
+Imports: ggplot2, CVXR, tidyr
 Suggests: knitr, rmarkdown

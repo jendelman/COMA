@@ -1,0 +1,161 @@
+---
+title: "COMA Vignette"
+author: "Jeff Endelman"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{COMA Vignette1}
+  %\VignetteEngine{knitr::rmarkdown}
+  \usepackage[utf8]{inputenc}
+---
+
+```{r include=FALSE}
+library(knitr)
+opts_chunk$set(echo = TRUE,message=FALSE,warning=FALSE,comment="##",
+                      dpi=150)
+opts_knit$set(root.dir="~/Box Sync/Endelman/Software/COMA")
+```
+
+The functionality of COMA is illustrated using tetraploid potato data from the University of Wisconsin-Madison. 
+
+The starting point for analysis is the function `read_data`. The first argument is the name of the CSV input file with the marker effects and allele dosage data. The second argument is the name of the CSV input file with the kinship matrix. If the kinship file is omitted, `read_data` expects an additional column in the geno file with base population allele frequencies, to properly calculate inbreeding. Consult the help page for more information on file formats. 
+
+The `matings` argument indicates how to create the table of possible matings. The option below is "all", which creates all unique parental combinations. When argument `standardize` is TRUE, the trait is centered and scaled so that the parental population has zero mean and unit variance. This is for convenience when interpreting the response values.
+```{r}
+library(COMA)
+geno.file <- system.file("vignette_data", "geno.csv", package = "COMA")
+kinship.file <- system.file("vignette_data", "kinship.csv", package = "COMA")
+
+#preview files
+geno <- read.csv(geno.file,check.names=F)
+geno[1:4,1:5]
+kinship <- read.csv(kinship.file,check.names=F,row.names=1)
+kinship[1:3,1:3]
+
+data <- read_data(geno.file=geno.file,
+                  kinship.file=kinship.file,
+                  ploidy=4, matings="all",
+                  standardize=TRUE, n.core=2)
+
+head(data$parents)
+head(data$matings)
+```
+
+As shown above, the `parents` output contains the predicted merit (GEBV) for each individual. The `matings` output contains the predicted merit ( F1 progeny mean) for each possible mating.
+
+The `ocs` and `oma` functions are used to determine the optimal genetic contributions. Both require the argument `parents`, which in addition to the merits must have the minimum and maximum contributions. In this case we used min=0 and max=1 for all parents, but this can be tailored to each parent. The `oma` function also requires a table of possible matings with merit, min, and max.
+Common guidance in animal breeding is to target an inbreeding rate (dF) of 0.005 to 0.01, so we begin with those values.
+
+```{r}
+parents <- data.frame(data$parents, min=0, max=1)
+
+ocs1 <- ocs(dF=0.005, parents=parents, ploidy=4, K=data$K)
+ocs2 <- ocs(dF=0.01, parents=parents, ploidy=4, K=data$K)
+rbind(ocs1$response, ocs2$response)
+
+matings <- data.frame(data$matings, min=0, max=1)
+
+oma1 <- oma(dF=0.005, parents=parents, matings=matings, ploidy=4, K=data$K)
+oma2 <- oma(dF=0.01, parents=parents, matings=matings, ploidy=4, K=data$K)
+rbind(oma1$response, oma2$response)
+```
+
+The above results show the expected response (merit) and Shannon diversity for the optimized parental contributions. For both OCS and OMA, higher dF leads to higher merit and lower diversity, which is an expected trade-off. The dF values returned by the software are the realized inbreeding rates, which can exceed the target due to thresholding (see below). OMA returns two realized inbreeding rates, dF1 and dF2, which correspond to the rates over the next two generations. The COMA manuscript (in preparation) provides a fuller explanation of why dF2 is needed, but numerical evidence is shown below. OMA is theoretically superior to OCS because it accommodates non-random mating, and yet the response was lower for OMA than OCS when dF=0.005. This is likely due to the approximations used in OCS and explained more fully in the manuscript.
+
+Now let's examine the optimum contributions, which are returned as `oc` for the parental contributions in both functions. The optimal mate allocations are returned as `om` by `oma`.
+
+```{r}
+kable(oma2$oc[1:5,], digits=3)
+kable(oma2$om[1:5,], digits=3)
+```
+
+In the above output, many parent and mate contributions are very small (rounding to 0.000). In practice, there will be some minimum contribution that a breeding program can realize. For example, in the UW-Madison potato breeding program, approximately 20,000 progeny seedlings are generated per year per market type (e.g., round white, russet), and we prefer to work with at least 100 offspring per family. Thus, the minimum mate allocation is 100/20,000 = 0.5%, and the minimum parental contribution is half that. These practical constraints are enforced after the optimization by setting all allocations/contributions below the minimum to zero. This can generate realized inbreeding rates above the target, but the excess is small for thresholds < 1%. The following code illustrates the `min.a` and `min.c` parameters for `oma` and `ocs`, respectively.
+
+```{r}
+ocs2b <- ocs(dF=0.01, parents=parents, ploidy=4, K=data$K, min.c=0.0025)
+oma2b <- oma(dF=0.01, parents=parents, matings=matings, ploidy=4, 
+             K=data$K, min.a=0.005)
+ocs2b$response
+oma2b$response
+kable(oma2b$oc[1:5,],digits=3)
+kable(oma2b$om[1:5,],digits=3)
+```
+
+Here is some code to quickly explore a range of inbreeding rates, using the `lapply` command:
+
+```{r}
+dF <- c(0.5,1,2,3)/100
+ans <- lapply(as.list(dF), oma, parents=parents, matings=matings, 
+              ploidy=4, K=data$K, min.a=0.005)
+response <- t(sapply(ans,"[[",1))
+kable(response, digits=3)
+```
+
+The above table illustrates the significance of the dF2 parameter, which is hitting the upper limit even when dF1 is not.
+
+The `plot_ribbon` command produces ribbon plots of the optimal contributions or allocations. The argument `min.c` behaves similarly as above, eliminating values below the threshold and renormalizing the proportions.
+
+```{r,fig.width=5,fig.height=4}
+oc <- lapply(ans,"[[",'oc')
+names(oc) <- dF
+plot_ribbon(oc)
+```
+
+```{r,fig.width=6,fig.height=4}
+f <- function(z){data.frame(id=apply(z$om[,1:2],1,paste,collapse="/"),
+                            value=z$om$value)}
+om <- lapply(ans,f)
+names(om) <- dF
+plot_ribbon(om, min.c=0.01)
+```
+
+### Other Constraints
+
+Because COMA is based on convex optimization, additional linear constraints can be incorporated. To illustrate, for the potato dataset there is additional information about two binary traits for the parental candidates. One is cytoplasmic male sterility (CMS) and the other potato virus Y resistance (PVYR), both of which were determined based on genetic markers. 
+
+```{r}
+other.file <- system.file("vignette_data", "candidates.csv", package = "COMA")
+data2 <- read.csv(other.file)
+table(data2[,-1])
+CMS.id <- data2$id[data2$CMS=="Y"]
+PVYR.id <- data2$id[data2$PVYR=="Y"]
+```
+The virus resistance trait is important enough that we typically require every cross to have at least one resistant parent. Furthermore, CMS individuals cannot be male parents. We will therefore remove any matings that violate these requirements (equivalent to putting the maximum allocation at 0).
+
+```{r}
+CMS.test <- !(matings$male %in% CMS.id)
+PVY.test <- matings$female %in% PVYR.id | 
+              matings$male %in% PVYR.id
+matings2 <- matings[CMS.test & PVY.test,]
+nrow(matings)
+nrow(matings2) #eliminates 2168 possible matings
+
+oma2c <- oma(dF=0.01, parents=parents, matings=matings2, ploidy=4, 
+             K=data$K, min.a=0.005)
+oma2c$response
+```
+
+Compared to the previous results, the optimum response is lower under this restricted mating plan, which is to be expected. 
+
+COMA also accepts linear equality and inequality constraints on the parental contributions. For example, even though we have ensured no CMS clones are male parents, if all females were CMS, the next generation would have no potential male parents! We therefore need to limit the parental contribution of CMS clones. The following code shows that the total contribution for the previous solution was 38.6%.
+
+```{r}
+ix <- oma2c$oc$id %in% CMS.id
+sum(oma2c$oc$value[ix])
+```
+
+Let's try limiting the total contribution to 20%. This is accomplished by adding an additional column to the `parents` data.frame, where the values represent the coefficients $\mathbf{a}$ of the contribution variables $\mathbf{y}$, and the column header is parsed to complete the equation. In this case, the header "lt0.5" represents less than or equal to 0.2:
+$$ \mathbf{a}^\prime \mathbf{y} \le 0.2$$
+
+```{r}
+parents$lt0.2 <- ifelse(parents$id %in% CMS.id,1,0)
+head(parents)
+
+oma2d <- oma(dF=0.01, parents=parents, matings=matings2, ploidy=4, 
+             K=data$K, min.a=0.005)
+oma2d$response
+
+ix <- oma2d$oc$id %in% CMS.id
+sum(oma2d$oc$value[ix])
+```
+
+The response goes down again because of the additional constraint, which the final line verifies is met.

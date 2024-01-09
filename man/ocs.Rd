@@ -4,16 +4,16 @@
 \alias{ocs}
 \title{Optimal Contribution Selection}
 \usage{
-ocs(parents, ploidy, K, dF, min.c = 0, dF.adapt = NULL, solver = "ECOS")
+ocs(dF, parents, ploidy, K, min.c = 0, dF.adapt = NULL, solver = "ECOS")
 }
 \arguments{
+\item{dF}{inbreeding rate}
+
 \item{parents}{input data frame (see Details)}
 
 \item{ploidy}{ploidy}
 
 \item{K}{kinship matrix}
-
-\item{dF}{maximum inbreeding rate}
 
 \item{min.c}{minimum contribution}
 
@@ -24,7 +24,7 @@ ocs(parents, ploidy, K, dF, min.c = 0, dF.adapt = NULL, solver = "ECOS")
 \value{
 list containing
 \describe{
-\item{response}{named vector with realized dF and merit}
+\item{response}{named vector with realized dF, merit, Shannon diversity for parents}
 \item{oc}{data frame of optimal contributions}
 }
 }
@@ -32,9 +32,11 @@ list containing
 Optimize the contribution of each individual to the next generation
 }
 \details{
-The data.frame \code{parents} can have up to five columns: id, merit, min, max, female. Min and max are real numbers between 0 and 1 specifying the minimum and maximum contribution for each parent. The "female" column is logical TRUE/FALSE. For hermaphroditic species, the last column is omitted.
+The data.frame \code{parents} has four required columns: id, merit, min, max. Min and max are real numbers between 0 and 1 specifying the minimum and maximum contribution for each parent. An optional fifth column named "female" is a logical TRUE/FALSE variable for species with separate sexes. 
+
+Additional columns can be used to specify constraints on linear combinations of the contributions. The values are the coefficients of the contribution variables, and the name of each column specifies the right-hand side of the constraint. Each name must begin with "lt","gt", or "eq", followed by a non-negative numeric value. For example, "lt0.5" means less than or equal to 0.5.
 
 The average inbreeding coefficient of the current generation is based on all individuals in \code{K}, which may exceed the list of individuals in \code{parents}.
 
-After optimization, contributions less than \code{min.c} are set equal to zero, and the remainder are renormalized. The realized inbreeding rate can exceed the specified limit after applying this threshold. It is also possible that no feasible solution exists for the specified \code{dF}. In this case, argument \code{dF.adapt} can be used to find other solutions. It is a list with two named components: step, max. The software increases the dF limit by dF.adapt$step up to the smaller of dF.adapt$max or the realized value under the original dF, in an attempt to find a solution with less inbreeding.
+After optimization, contributions less than \code{min.c} are set equal to zero, and the remainder are renormalized. The realized inbreeding rate can exceed the specified limit after applying this threshold. It is also possible that no feasible solution exists for the specified \code{dF}. In either case, argument \code{dF.adapt} can be used to find other solutions. It is a list with two named components: step, max. The software increases the dF limit by dF.adapt$step up to the smaller of dF.adapt$max or the realized value under the original dF, in an attempt to find a solution with less inbreeding.
 }

@@ -8,9 +8,9 @@ read_data(
   geno.file,
   kinship.file = NULL,
   ploidy,
-  dominance,
   sex = NULL,
-  matings,
+  matings = "none",
+  standardize = FALSE,
   n.core = 1
 )
 }
@@ -21,11 +21,11 @@ read_data(
 
 \item{ploidy}{even integer}
 
-\item{dominance}{TRUE/FALSE}
-
-\item{sex}{optional, data frame with columns id (character) and female (TRUE/FALSE)}
+\item{sex}{optional, data frame with columns id and female (T/F)}
 
 \item{matings}{see Details}
+
+\item{standardize}{T/F, standardize merit in parental candidates}
 
 \item{n.core}{multi-core evaluation}
 }
@@ -33,15 +33,15 @@ read_data(
 list containing
 \describe{
 \item{K}{genomic kinship matrix}
-\item{parents}{data frame with individual merits and limits}
-\item{matings}{data frame with mating merits and limits}
+\item{parents}{data frame of individual merits}
+\item{matings}{data frame of mating merits}
 }
 }
 \description{
-Constructs the G matrix and predicts merit for OCS/OMA
+Constructs the kinship matrix and predicts merit for OCS/OMA
 }
 \details{
-The first column of \code{geno.file} is marker name. The second column contains the additive effects for the breeding value parameterization, and when \code{dominance=TRUE}, the next column contains (digenic) dominance effects. When \code{kinship.file=NULL}, the software assumes the following column "p.ref" contains allele frequencies for the reference population to control genomic inbreeding. Subsequent columns contain the marker data for the population, coded as allele dosage, from 0 to ploidy. 
+The first column of \code{geno.file} is marker name. The second column contains the additive effects for the breeding value parameterization, and (digenic) dominance effects should be in the third column with the header "dom". When \code{kinship.file=NULL}, the software assumes the following column "p.ref" contains allele frequencies for the reference population to control genomic inbreeding. Subsequent columns contain the marker data for the population, coded as allele dosage, from 0 to ploidy. 
 
-The argument \code{matings} can be either (1) a character vector of genotype ids, in which case all possible matings of these individuals are generated (reciprocal matings excluded), or (2) a data.frame with four columns: female, male, min, max. The columns "min" and "max" specify the limits (0-1) for the contribution of each mating. To skip mate allocation entirely, use \code{matings=NULL}.
+There are several options for argument \code{matings}: (1) "none" = no matings; (2) "all" = all possible matings of the individuals in \code{geno.file} (excluding reciprocals); (3) a character vector of genotype ids to calculate all pairs of matings; (4) a data.frame of desired matings with 2 columns: female, male.
 }

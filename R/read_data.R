@@ -1,34 +1,36 @@
 #' Read data for OCS/OMA
 #' 
-#' Constructs the G matrix and predicts merit for OCS/OMA
+#' Constructs the kinship matrix and predicts merit for OCS/OMA
 #' 
-#' The first column of \code{geno.file} is marker name. The second column contains the additive effects for the breeding value parameterization, and when \code{dominance=TRUE}, the next column contains (digenic) dominance effects. When \code{kinship.file=NULL}, the software assumes the following column "p.ref" contains allele frequencies for the reference population to control genomic inbreeding. Subsequent columns contain the marker data for the population, coded as allele dosage, from 0 to ploidy. 
+#' The first column of \code{geno.file} is marker name. The second column contains the additive effects for the breeding value parameterization, and (digenic) dominance effects should be in the third column with the header "dom". When \code{kinship.file=NULL}, the software assumes the following column "p.ref" contains allele frequencies for the reference population to control genomic inbreeding. Subsequent columns contain the marker data for the population, coded as allele dosage, from 0 to ploidy. 
 #' 
-#' The argument \code{matings} can be either (1) a character vector of genotype ids, in which case all possible matings of these individuals are generated (reciprocal matings excluded), or (2) a data.frame with four columns: female, male, min, max. The columns "min" and "max" specify the limits (0-1) for the contribution of each mating. To skip mate allocation entirely, use \code{matings=NULL}.
+#' There are several options for argument \code{matings}: (1) "none" = no matings; (2) "all" = all possible matings of the individuals in \code{geno.file} (excluding reciprocals); (3) a character vector of genotype ids to calculate all pairs of matings; (4) a data.frame of desired matings with 2 columns: female, male. 
 #'
 #' @param geno.file file with marker effects and genotypes
 #' @param kinship.file NULL
 #' @param ploidy even integer
-#' @param dominance TRUE/FALSE
-#' @param sex optional, data frame with columns id (character) and female (TRUE/FALSE)
+#' @param sex optional, data frame with columns id and female (T/F)
 #' @param matings see Details 
+#' @param standardize T/F, standardize merit in parental candidates
 #' @param n.core multi-core evaluation
 #'
 #' @return list containing
 #' \describe{
 #' \item{K}{genomic kinship matrix}
-#' \item{parents}{data frame with individual merits and limits}
-#' \item{matings}{data frame with mating merits and limits}
+#' \item{parents}{data frame of individual merits}
+#' \item{matings}{data frame of mating merits}
 #'}
 #' @export
 #' @importFrom utils read.csv
+#' @importFrom stats sd
 #' @importFrom parallel makeCluster clusterExport parSapply stopCluster
 
 
-read_data <- function(geno.file, kinship.file=NULL, ploidy, dominance, 
-                      sex=NULL, matings, n.core=1) {
+read_data <- function(geno.file, kinship.file=NULL, ploidy, sex=NULL, 
+                      matings="none", standardize=FALSE, n.core=1) {
   
   data <- read.csv(file = geno.file,check.names=F,row.names=1)
+  dominance <- (colnames(data)[2]=="dom")
   geno.start <- 2 + as.integer(dominance) + as.integer(is.null(kinship.file))
   
   effects <- as.matrix(data[,1:(as.integer(dominance)+1),drop=FALSE])
@@ -52,9 +54,7 @@ read_data <- function(geno.file, kinship.file=NULL, ploidy, dominance,
   markers <- rownames(geno)
   
   Pmat <- kronecker(matrix(p,nrow=1,ncol=m),matrix(1,nrow=n,ncol=1))
-  #p.mat <- matrix(1,nrow=n,ncol=1) %*% matrix(p,nrow=1)
   coeff <- t(geno) - ploidy * Pmat 
-  #coeff <- scale(t(geno),scale=F)
   dimnames(coeff) <- list(id,markers)
   coeff[which(is.na(coeff))] <- 0
   
@@ -64,7 +64,7 @@ read_data <- function(geno.file, kinship.file=NULL, ploidy, dominance,
     w <- 1e-5 
     K <- (1-w)*K + w*mean(diag(K))*diag(n)
   } else {
-    K <- as.matrix(read.csv(kinship.file,row.names=1))
+    K <- as.matrix(read.csv(kinship.file,row.names=1,check.names=F))
     colnames(K) <- rownames(K)
     stopifnot(id %in% colnames(K))
     K <- K[id,id]
@@ -83,6 +83,10 @@ read_data <- function(geno.file, kinship.file=NULL, ploidy, dominance,
   } else {
     parents$merit <- parents$add
   }
+  mean.merit <- mean(parents$merit)
+  sd.merit <- sd(parents$merit)
+  if (standardize) 
+    parents$merit <- (parents$merit - mean.merit)/sd.merit
   
   if (!is.null(sex)) {
     colnames(sex) <- c("id","female")
@@ -95,23 +99,24 @@ read_data <- function(geno.file, kinship.file=NULL, ploidy, dominance,
     ploidy/4/(ploidy-1)*((Xi-Xj)^2 + 2/ploidy*Xi*Xj - (Xi+Xj))
   }
   
-  if (is.null(matings)) {
+  if (matings=="none") {
     
     return(list(K=K, parents=parents[,setdiff(colnames(parents),c("add","dom"))]))
     
   } else {
     #OMA
-    if (class(matings)=="character") {
+    if (inherits(matings,"character")) {
+      if (matings=="all")
+        matings <- parents$id
       if ("sex" %in% colnames(parents)) {
         females <- intersect(parents$id[parents$female],matings)
         males <- intersect(parents$id[!parents$female],matings)
         stopifnot(length(females)>0 & length(males)>0)
-        matings <- data.frame(expand.grid(female=females,male=males,stringsAsFactors = F),
-                              min=0,max=1)
+        matings <- data.frame(expand.grid(female=females,male=males,stringsAsFactors = F))
       } else {
-        id2 <- intersect(matings,id)
+        id2 <- intersect(matings,parents$id)
         stopifnot(length(id2)>1)
-        matings <- data.frame(expand.grid(female=id2,male=id2,min=0,max=1,stringsAsFactors = F))
+        matings <- data.frame(expand.grid(female=id2,male=id2,stringsAsFactors = F))
         matings <- matings[matings$female >= matings$male,] 
       }
     }
@@ -141,7 +146,11 @@ read_data <- function(geno.file, kinship.file=NULL, ploidy, dominance,
       }
       matings$merit <- matings$merit + as.numeric(crossprod(ans,effects[,2]))
     }
+    
+    if (standardize)
+      matings$merit <- (matings$merit-mean.merit)/sd.merit
+    
     return(list(K=K, parents=parents[,setdiff(colnames(parents),c("add","dom"))], 
-                matings=matings[,c("female","male","merit","min","max")]))
+                matings=matings[,c("female","male","merit")]))
   } 
 }
