@@ -2,7 +2,7 @@
 #'
 #' Optimize the allocation for each mating
 #' 
-#' The data frame \code{parents} needs columns id, min, max, with optional column female (logical) for separate sexes. Additional columns can be used to specify constraints on linear combinations of the contributions. The values are the coefficients of the contribution variables, and the name of each column specifies the right-hand side of the constraint. Each name must begin with "lt","gt", or "eq", followed by a non-negative numeric value. For example, "lt0.5" means less than or equal to 0.5.
+#' The first three columns of \code{parents} should be named "id", "min", "max", with an optional fourth column "female" to indicate sex in dioecious species. Additional columns can be used to specify constraints on linear combinations of the contributions. The values are the coefficients of the contribution variables, and the name of each column specifies the right-hand side of the constraint. Each name must begin with "lt","gt", or "eq", followed by a non-negative numeric value. For example, "lt0.5" means less than or equal to 0.5.
 #' 
 #' The data.frame \code{matings} has five columns: female, male, merit, min, max. 
 #' 
@@ -32,7 +32,7 @@
 oma <- function(dF, parents, matings, ploidy, K, min.a=0, 
                 dF.adapt=NULL, solver="ECOS") {
   
-  stopifnot(c("id","merit","min","max") %in% colnames(parents))
+  stopifnot(c("id","min","max") == colnames(parents)[1:3])
   parents$id <- as.character(parents$id)
   stopifnot(parents$max <= 1)
   stopifnot(parents$min >= 0)
@@ -83,12 +83,12 @@ oma <- function(dF, parents, matings, ploidy, K, min.a=0,
     stopifnot(class(parents$female)=="logical")
     stopifnot(sum(parents$female) > 0 & sum(!parents$female) > 0)
     parents$female <- as.integer(parents$female)
-    if (ncol(parents) > 5) 
-      constraints <- parents[,6:ncol(parents),drop=FALSE]
-  } else {
-    sexed <- FALSE
     if (ncol(parents) > 4) 
       constraints <- parents[,5:ncol(parents),drop=FALSE]
+  } else {
+    sexed <- FALSE
+    if (ncol(parents) > 3) 
+      constraints <- parents[,4:ncol(parents),drop=FALSE]
   }
   con.list <- list(y <= parents$max, y >= parents$min, y==M%*%x, 
                    x <= matings$max, x >= matings$min, sum(x)==1)

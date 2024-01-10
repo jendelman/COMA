@@ -418,11 +418,12 @@ values.</p>
 <pre><code>##         dF    merit diversity
 ## [1,] 0.005 1.786104   2.40069
 ## [2,] 0.010 2.014343   2.21108</code></pre>
-<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" tabindex="-1"></a>matings <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(data<span class="sc">$</span>matings, <span class="at">min=</span><span class="dv">0</span>, <span class="at">max=</span><span class="dv">1</span>)</span>
-<span id="cb11-2"><a href="#cb11-2" tabindex="-1"></a></span>
-<span id="cb11-3"><a href="#cb11-3" tabindex="-1"></a>oma1 <span class="ot">&lt;-</span> <span class="fu">oma</span>(<span class="at">dF=</span><span class="fl">0.005</span>, <span class="at">parents=</span>parents, <span class="at">matings=</span>matings, <span class="at">ploidy=</span><span class="dv">4</span>, <span class="at">K=</span>data<span class="sc">$</span>K)</span>
-<span id="cb11-4"><a href="#cb11-4" tabindex="-1"></a>oma2 <span class="ot">&lt;-</span> <span class="fu">oma</span>(<span class="at">dF=</span><span class="fl">0.01</span>, <span class="at">parents=</span>parents, <span class="at">matings=</span>matings, <span class="at">ploidy=</span><span class="dv">4</span>, <span class="at">K=</span>data<span class="sc">$</span>K)</span>
-<span id="cb11-5"><a href="#cb11-5" tabindex="-1"></a><span class="fu">rbind</span>(oma1<span class="sc">$</span>response, oma2<span class="sc">$</span>response)</span></code></pre></div>
+<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" tabindex="-1"></a>parents2 <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(<span class="at">id=</span>data<span class="sc">$</span>parents<span class="sc">$</span>id, <span class="at">min=</span><span class="dv">0</span>, <span class="at">max=</span><span class="dv">1</span>)</span>
+<span id="cb11-2"><a href="#cb11-2" tabindex="-1"></a>matings <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(data<span class="sc">$</span>matings, <span class="at">min=</span><span class="dv">0</span>, <span class="at">max=</span><span class="dv">1</span>)</span>
+<span id="cb11-3"><a href="#cb11-3" tabindex="-1"></a></span>
+<span id="cb11-4"><a href="#cb11-4" tabindex="-1"></a>oma1 <span class="ot">&lt;-</span> <span class="fu">oma</span>(<span class="at">dF=</span><span class="fl">0.005</span>, <span class="at">parents=</span>parents2, <span class="at">matings=</span>matings, <span class="at">ploidy=</span><span class="dv">4</span>, <span class="at">K=</span>data<span class="sc">$</span>K)</span>
+<span id="cb11-5"><a href="#cb11-5" tabindex="-1"></a>oma2 <span class="ot">&lt;-</span> <span class="fu">oma</span>(<span class="at">dF=</span><span class="fl">0.01</span>, <span class="at">parents=</span>parents2, <span class="at">matings=</span>matings, <span class="at">ploidy=</span><span class="dv">4</span>, <span class="at">K=</span>data<span class="sc">$</span>K)</span>
+<span id="cb11-6"><a href="#cb11-6" tabindex="-1"></a><span class="fu">rbind</span>(oma1<span class="sc">$</span>response, oma2<span class="sc">$</span>response)</span></code></pre></div>
 <pre><code>##        dF1   dF2    merit diversity
 ## [1,] 0.005 0.005 1.682126  2.954457
 ## [2,] 0.010 0.010 2.037814  2.595535</code></pre>
@@ -525,7 +526,7 @@ above the target, but the excess is small for thresholds &lt; 1%. The
 following code illustrates the <code>min.a</code> and <code>min.c</code>
 parameters for <code>oma</code> and <code>ocs</code>, respectively.</p>
 <div class="sourceCode" id="cb15"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" tabindex="-1"></a>ocs2b <span class="ot">&lt;-</span> <span class="fu">ocs</span>(<span class="at">dF=</span><span class="fl">0.01</span>, <span class="at">parents=</span>parents, <span class="at">ploidy=</span><span class="dv">4</span>, <span class="at">K=</span>data<span class="sc">$</span>K, <span class="at">min.c=</span><span class="fl">0.0025</span>)</span>
-<span id="cb15-2"><a href="#cb15-2" tabindex="-1"></a>oma2b <span class="ot">&lt;-</span> <span class="fu">oma</span>(<span class="at">dF=</span><span class="fl">0.01</span>, <span class="at">parents=</span>parents, <span class="at">matings=</span>matings, <span class="at">ploidy=</span><span class="dv">4</span>, </span>
+<span id="cb15-2"><a href="#cb15-2" tabindex="-1"></a>oma2b <span class="ot">&lt;-</span> <span class="fu">oma</span>(<span class="at">dF=</span><span class="fl">0.01</span>, <span class="at">parents=</span>parents2, <span class="at">matings=</span>matings, <span class="at">ploidy=</span><span class="dv">4</span>, </span>
 <span id="cb15-3"><a href="#cb15-3" tabindex="-1"></a>             <span class="at">K=</span>data<span class="sc">$</span>K, <span class="at">min.a=</span><span class="fl">0.005</span>)</span>
 <span id="cb15-4"><a href="#cb15-4" tabindex="-1"></a>ocs2b<span class="sc">$</span>response</span></code></pre></div>
 <pre><code>##        dF     merit diversity 
@@ -616,7 +617,7 @@ parameters for <code>oma</code> and <code>ocs</code>, respectively.</p>
 <p>Here is some code to quickly explore a range of inbreeding rates,
 using the <code>lapply</code> command:</p>
 <div class="sourceCode" id="cb21"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" tabindex="-1"></a>dF <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="fl">0.5</span>,<span class="dv">1</span>,<span class="dv">2</span>,<span class="dv">3</span>)<span class="sc">/</span><span class="dv">100</span></span>
-<span id="cb21-2"><a href="#cb21-2" tabindex="-1"></a>ans <span class="ot">&lt;-</span> <span class="fu">lapply</span>(<span class="fu">as.list</span>(dF), oma, <span class="at">parents=</span>parents, <span class="at">matings=</span>matings, </span>
+<span id="cb21-2"><a href="#cb21-2" tabindex="-1"></a>ans <span class="ot">&lt;-</span> <span class="fu">lapply</span>(<span class="fu">as.list</span>(dF), oma, <span class="at">parents=</span>parents2, <span class="at">matings=</span>matings, </span>
 <span id="cb21-3"><a href="#cb21-3" tabindex="-1"></a>              <span class="at">ploidy=</span><span class="dv">4</span>, <span class="at">K=</span>data<span class="sc">$</span>K, <span class="at">min.a=</span><span class="fl">0.005</span>)</span>
 <span id="cb21-4"><a href="#cb21-4" tabindex="-1"></a>response <span class="ot">&lt;-</span> <span class="fu">t</span>(<span class="fu">sapply</span>(ans,<span class="st">&quot;[[&quot;</span>,<span class="dv">1</span>))</span>
 <span id="cb21-5"><a href="#cb21-5" tabindex="-1"></a><span class="fu">kable</span>(response, <span class="at">digits=</span><span class="dv">3</span>)</span></code></pre></div>
@@ -702,7 +703,7 @@ maximum allocation at 0).</p>
 <pre><code>## [1] 4371</code></pre>
 <div class="sourceCode" id="cb29"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb29-1"><a href="#cb29-1" tabindex="-1"></a><span class="fu">nrow</span>(matings2) <span class="co">#eliminates 2168 possible matings</span></span></code></pre></div>
 <pre><code>## [1] 2203</code></pre>
-<div class="sourceCode" id="cb31"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb31-1"><a href="#cb31-1" tabindex="-1"></a>oma2c <span class="ot">&lt;-</span> <span class="fu">oma</span>(<span class="at">dF=</span><span class="fl">0.01</span>, <span class="at">parents=</span>parents, <span class="at">matings=</span>matings2, <span class="at">ploidy=</span><span class="dv">4</span>, </span>
+<div class="sourceCode" id="cb31"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb31-1"><a href="#cb31-1" tabindex="-1"></a>oma2c <span class="ot">&lt;-</span> <span class="fu">oma</span>(<span class="at">dF=</span><span class="fl">0.01</span>, <span class="at">parents=</span>parents2, <span class="at">matings=</span>matings2, <span class="at">ploidy=</span><span class="dv">4</span>, </span>
 <span id="cb31-2"><a href="#cb31-2" tabindex="-1"></a>             <span class="at">K=</span>data<span class="sc">$</span>K, <span class="at">min.a=</span><span class="fl">0.005</span>)</span>
 <span id="cb31-3"><a href="#cb31-3" tabindex="-1"></a>oma2c<span class="sc">$</span>response</span></code></pre></div>
 <pre><code>##         dF1         dF2       merit   diversity 
@@ -734,14 +735,14 @@ represents less than or equal to 0.2: <span class="math display">\[
 ## 4 W19012-12 2.7363997   0   1     0
 ## 5  W19013-4 2.2736641   0   1     0
 ## 6  W19016-5 2.8195329   0   1     1</code></pre>
-<div class="sourceCode" id="cb37"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb37-1"><a href="#cb37-1" tabindex="-1"></a>oma2d <span class="ot">&lt;-</span> <span class="fu">oma</span>(<span class="at">dF=</span><span class="fl">0.01</span>, <span class="at">parents=</span>parents, <span class="at">matings=</span>matings2, <span class="at">ploidy=</span><span class="dv">4</span>, </span>
+<div class="sourceCode" id="cb37"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb37-1"><a href="#cb37-1" tabindex="-1"></a>oma2d <span class="ot">&lt;-</span> <span class="fu">oma</span>(<span class="at">dF=</span><span class="fl">0.01</span>, <span class="at">parents=</span>parents2, <span class="at">matings=</span>matings2, <span class="at">ploidy=</span><span class="dv">4</span>, </span>
 <span id="cb37-2"><a href="#cb37-2" tabindex="-1"></a>             <span class="at">K=</span>data<span class="sc">$</span>K, <span class="at">min.a=</span><span class="fl">0.005</span>)</span>
 <span id="cb37-3"><a href="#cb37-3" tabindex="-1"></a>oma2d<span class="sc">$</span>response</span></code></pre></div>
-<pre><code>##        dF1        dF2      merit  diversity 
-## 0.01005180 0.01010634 1.66858769 2.63120310</code></pre>
+<pre><code>##         dF1         dF2       merit   diversity 
+## 0.010027170 0.009976767 1.752347962 2.683944640</code></pre>
 <div class="sourceCode" id="cb39"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb39-1"><a href="#cb39-1" tabindex="-1"></a>ix <span class="ot">&lt;-</span> oma2d<span class="sc">$</span>oc<span class="sc">$</span>id <span class="sc">%in%</span> CMS.id</span>
 <span id="cb39-2"><a href="#cb39-2" tabindex="-1"></a><span class="fu">sum</span>(oma2d<span class="sc">$</span>oc<span class="sc">$</span>value[ix])</span></code></pre></div>
-<pre><code>## [1] 0.199217</code></pre>
+<pre><code>## [1] 0.3863718</code></pre>
 <p>The response goes down again because of the additional constraint,
 which the final line verifies is met.</p>
 </div>

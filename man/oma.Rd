@@ -44,7 +44,7 @@ list containing
 Optimize the allocation for each mating
 }
 \details{
-The data frame \code{parents} needs columns id, min, max, with optional column female (logical) for separate sexes. Additional columns can be used to specify constraints on linear combinations of the contributions. The values are the coefficients of the contribution variables, and the name of each column specifies the right-hand side of the constraint. Each name must begin with "lt","gt", or "eq", followed by a non-negative numeric value. For example, "lt0.5" means less than or equal to 0.5.
+The first three columns of \code{parents} should be named "id", "min", "max", with an optional fourth column "female" to indicate sex in dioecious species. Additional columns can be used to specify constraints on linear combinations of the contributions. The values are the coefficients of the contribution variables, and the name of each column specifies the right-hand side of the constraint. Each name must begin with "lt","gt", or "eq", followed by a non-negative numeric value. For example, "lt0.5" means less than or equal to 0.5.
 
 The data.frame \code{matings} has five columns: female, male, merit, min, max. 
 

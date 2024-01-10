@@ -32,7 +32,7 @@ list containing
 Optimize the contribution of each individual to the next generation
 }
 \details{
-The data.frame \code{parents} has four required columns: id, merit, min, max. Min and max are real numbers between 0 and 1 specifying the minimum and maximum contribution for each parent. An optional fifth column named "female" is a logical TRUE/FALSE variable for species with separate sexes. 
+The first four columns of \code{parents} should be named as follows: id, merit, min, max. Min and max are real numbers between 0 and 1 specifying the minimum and maximum contribution for each parent. An optional fifth column named "female" is a logical TRUE/FALSE variable for species with separate sexes. 
 
 Additional columns can be used to specify constraints on linear combinations of the contributions. The values are the coefficients of the contribution variables, and the name of each column specifies the right-hand side of the constraint. Each name must begin with "lt","gt", or "eq", followed by a non-negative numeric value. For example, "lt0.5" means less than or equal to 0.5.
 

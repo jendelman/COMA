@@ -52,10 +52,11 @@ ocs1 <- ocs(dF=0.005, parents=parents, ploidy=4, K=data$K)
 ocs2 <- ocs(dF=0.01, parents=parents, ploidy=4, K=data$K)
 rbind(ocs1$response, ocs2$response)
 
+parents2 <- data.frame(id=data$parents$id, min=0, max=1)
 matings <- data.frame(data$matings, min=0, max=1)
 
-oma1 <- oma(dF=0.005, parents=parents, matings=matings, ploidy=4, K=data$K)
-oma2 <- oma(dF=0.01, parents=parents, matings=matings, ploidy=4, K=data$K)
+oma1 <- oma(dF=0.005, parents=parents2, matings=matings, ploidy=4, K=data$K)
+oma2 <- oma(dF=0.01, parents=parents2, matings=matings, ploidy=4, K=data$K)
 rbind(oma1$response, oma2$response)
 ```
 
@@ -72,7 +73,7 @@ In the above output, many parent and mate contributions are very small (rounding
 
 ```{r}
 ocs2b <- ocs(dF=0.01, parents=parents, ploidy=4, K=data$K, min.c=0.0025)
-oma2b <- oma(dF=0.01, parents=parents, matings=matings, ploidy=4, 
+oma2b <- oma(dF=0.01, parents=parents2, matings=matings, ploidy=4, 
              K=data$K, min.a=0.005)
 ocs2b$response
 oma2b$response
@@ -84,7 +85,7 @@ Here is some code to quickly explore a range of inbreeding rates, using the `lap
 
 ```{r}
 dF <- c(0.5,1,2,3)/100
-ans <- lapply(as.list(dF), oma, parents=parents, matings=matings, 
+ans <- lapply(as.list(dF), oma, parents=parents2, matings=matings, 
               ploidy=4, K=data$K, min.a=0.005)
 response <- t(sapply(ans,"[[",1))
 kable(response, digits=3)
@@ -129,7 +130,7 @@ matings2 <- matings[CMS.test & PVY.test,]
 nrow(matings)
 nrow(matings2) #eliminates 2168 possible matings
 
-oma2c <- oma(dF=0.01, parents=parents, matings=matings2, ploidy=4, 
+oma2c <- oma(dF=0.01, parents=parents2, matings=matings2, ploidy=4, 
              K=data$K, min.a=0.005)
 oma2c$response
 ```
@@ -150,7 +151,7 @@ $$ \mathbf{a}^\prime \mathbf{y} \le 0.2$$
 parents$lt0.2 <- ifelse(parents$id %in% CMS.id,1,0)
 head(parents)
 
-oma2d <- oma(dF=0.01, parents=parents, matings=matings2, ploidy=4, 
+oma2d <- oma(dF=0.01, parents=parents2, matings=matings2, ploidy=4, 
              K=data$K, min.a=0.005)
 oma2d$response
 
