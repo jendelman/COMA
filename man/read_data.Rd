@@ -43,5 +43,5 @@ Constructs the kinship matrix and predicts merit for OCS/OMA
 \details{
 The first column of \code{geno.file} is marker name. The second column contains the additive effects for the breeding value parameterization, and (digenic) dominance effects should be in the third column with the header "dom". When \code{kinship.file=NULL}, the software assumes the following column "p.ref" contains allele frequencies for the reference population to control genomic inbreeding. Subsequent columns contain the marker data for the population, coded as allele dosage, from 0 to ploidy. 
 
-There are several options for argument \code{matings}: (1) "none" = no matings; (2) "all" = all possible matings of the individuals in \code{geno.file} (excluding reciprocals); (3) a character vector of genotype ids to calculate all pairs of matings; (4) a data.frame of desired matings with 2 columns: female, male.
+There are several options for argument \code{matings}: (1) "none" = no matings; (2) "all" = all possible matings of the individuals in \code{geno.file} (excluding reciprocals); (3) a character vector of genotype ids to calculate all pairs of matings; (4) a 2-column data.frame of desired matings with header "female","male" for dioecious species or else "parent1","parent2". Self-matings are included under options (2) and (3) but can be easily removed in the output.
 }

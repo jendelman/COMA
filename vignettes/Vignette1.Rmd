@@ -17,9 +17,10 @@ opts_knit$set(root.dir="~/Box Sync/Endelman/Software/COMA")
 
 The functionality of COMA is illustrated using tetraploid potato data from the University of Wisconsin-Madison. 
 
-The starting point for analysis is the function `read_data`. The first argument is the name of the CSV input file with the marker effects and allele dosage data. The second argument is the name of the CSV input file with the kinship matrix. If the kinship file is omitted, `read_data` expects an additional column in the geno file with base population allele frequencies, to properly calculate inbreeding. Consult the help page for more information on file formats. 
+The starting point for analysis is the function `read_data`. The first argument is the name of the CSV input file with the marker effects and allele dosage data. The additive and dominance marker effects should correspond to a breeding value parameterization (including heterosis/inbreeding depression) and can be estimated with [R/StageWise](https://github.com/jendelman/StageWise). The second argument is the name of the CSV input file with the kinship matrix. If the kinship file is omitted, `read_data` expects an additional column in the geno file with base population allele frequencies, to properly calculate inbreeding. Consult the help page for more information on file formats. 
 
 The `matings` argument indicates how to create the table of possible matings. The option below is "all", which creates all unique parental combinations. When argument `standardize` is TRUE, the trait is centered and scaled so that the parental population has zero mean and unit variance. This is for convenience when interpreting the response values.
+
 ```{r}
 library(COMA)
 geno.file <- system.file("vignette_data", "geno.csv", package = "COMA")
@@ -40,10 +41,9 @@ head(data$parents)
 head(data$matings)
 ```
 
-As shown above, the `parents` output contains the predicted merit (GEBV) for each individual. The `matings` output contains the predicted merit ( F1 progeny mean) for each possible mating.
+As shown above, the `parents` output contains the predicted merit (GEBV) for each individual. The `matings` output contains the predicted merit ( F1 progeny mean) for each possible mating. For dioecious species (with separate sexes), a data frame with sex information is needed as argument `sex` in `read_data`, and the column headers for the matings are "female","male" instead of "parent1","parent2". 
 
-The `ocs` and `oma` functions are used to determine the optimal genetic contributions. Both require the argument `parents`, which in addition to the merits must have the minimum and maximum contributions. In this case we used min=0 and max=1 for all parents, but this can be tailored to each parent. The `oma` function also requires a table of possible matings with merit, min, and max.
-Common guidance in animal breeding is to target an inbreeding rate (dF) of 0.005 to 0.01, so we begin with those values.
+The `ocs` and `oma` functions are used to determine the optimal genetic contributions. Both require the argument `parents`, which must specify the minimum and maximum contributions. In this case we used min=0 and max=1 for all parents, but this can be tailored to each parent. For `oma`, the parental merits are not used, so this column is omitted. Rather, the merit of each mating is needed, along with its min and max. Common guidance in animal breeding is to target an inbreeding rate (dF) of 0.005 to 0.01, so we begin with those values.
 
 ```{r}
 parents <- data.frame(data$parents, min=0, max=1)
@@ -60,7 +60,7 @@ oma2 <- oma(dF=0.01, parents=parents2, matings=matings, ploidy=4, K=data$K)
 rbind(oma1$response, oma2$response)
 ```
 
-The above results show the expected response (merit) and Shannon diversity for the optimized parental contributions. For both OCS and OMA, higher dF leads to higher merit and lower diversity, which is an expected trade-off. The dF values returned by the software are the realized inbreeding rates, which can exceed the target due to thresholding (see below). OMA returns two realized inbreeding rates, dF1 and dF2, which correspond to the rates over the next two generations. The COMA manuscript (in preparation) provides a fuller explanation of why dF2 is needed, but numerical evidence is shown below. OMA is theoretically superior to OCS because it accommodates non-random mating, and yet the response was lower for OMA than OCS when dF=0.005. This is likely due to the approximations used in OCS and explained more fully in the manuscript.
+The above results show the expected response (merit) and Shannon diversity for the optimized parental contributions. For both OCS and OMA, higher dF leads to higher merit and lower diversity, which is an expected trade-off. The dF values returned by the software are the realized inbreeding rates, which can exceed the target due to thresholding (see below). OMA returns two realized inbreeding rates, dF1 and dF2, which correspond to the rates over the next two generations. The COMA manuscript (in preparation) provides a fuller explanation of why dF2 is needed, but numerical evidence is shown below. OMA is theoretically superior to OCS because it accommodates non-random mating, and yet the predicted merit was lower for OMA than OCS when dF=0.005. This is likely due to the approximations used in OCS, both for merit and inbreeding, and should not be interpreted as a true advantage. 
 
 Now let's examine the optimum contributions, which are returned as `oc` for the parental contributions in both functions. The optimal mate allocations are returned as `om` by `oma`.
 
@@ -91,7 +91,7 @@ response <- t(sapply(ans,"[[",1))
 kable(response, digits=3)
 ```
 
-The above table illustrates the significance of the dF2 parameter, which is hitting the upper limit even when dF1 is not.
+The above table illustrates the significance of the dF2 parameter, which is at the upper limit even when dF1 is not.
 
 The `plot_ribbon` command produces ribbon plots of the optimal contributions or allocations. The argument `min.c` behaves similarly as above, eliminating values below the threshold and renormalizing the proportions.
 
@@ -117,39 +117,39 @@ Because COMA is based on convex optimization, additional linear constraints can 
 other.file <- system.file("vignette_data", "candidates.csv", package = "COMA")
 data2 <- read.csv(other.file)
 table(data2[,-1])
-CMS.id <- data2$id[data2$CMS=="Y"]
 PVYR.id <- data2$id[data2$PVYR=="Y"]
+CMS.id <- data2$id[data2$CMS=="Y"]
 ```
-The virus resistance trait is important enough that we typically require every cross to have at least one resistant parent. Furthermore, CMS individuals cannot be male parents. We will therefore remove any matings that violate these requirements (equivalent to putting the maximum allocation at 0).
+
+The virus resistance trait is important enough that we typically require every cross to have at least one resistant parent. This can be accomplished by eliminating matings without a resistant parent (equivalent to putting the maximum allocation at 0). Furthermore, every mating must have at least one parent that is not CMS (to be the male).
 
 ```{r}
-CMS.test <- !(matings$male %in% CMS.id)
-PVY.test <- matings$female %in% PVYR.id | 
-              matings$male %in% PVYR.id
-matings2 <- matings[CMS.test & PVY.test,]
+PVY.test <- matings$parent1 %in% PVYR.id | matings$parent2 %in% PVYR.id
+CMS.test <- !(matings$parent1 %in% CMS.id & matings$parent2 %in% CMS.id)
+matings2 <- matings[PVY.test & CMS.test,]
 nrow(matings)
-nrow(matings2) #eliminates 2168 possible matings
+nrow(matings2) #eliminates 1252 possible matings
 
 oma2c <- oma(dF=0.01, parents=parents2, matings=matings2, ploidy=4, 
              K=data$K, min.a=0.005)
 oma2c$response
 ```
 
-Compared to the previous results, the optimum response is lower under this restricted mating plan, which is to be expected. 
+The constraints have reduced the optimal merit from 2.04 (shown earlier) to 1.77, which is to be expected. 
 
-COMA also accepts linear equality and inequality constraints on the parental contributions. For example, even though we have ensured no CMS clones are male parents, if all females were CMS, the next generation would have no potential male parents! We therefore need to limit the parental contribution of CMS clones. The following code shows that the total contribution for the previous solution was 38.6%.
+COMA also accepts linear equality and inequality constraints on the parental contributions. This can be used to limit the frequency of CMS clones in the mating plan, which is beneficial because every mating with a CMS parent (as the female) reduces the number of male parent candidates in the next generation. The following code shows that the total contribution of CMS parents in the previous solution was 40%.
 
 ```{r}
 ix <- oma2c$oc$id %in% CMS.id
 sum(oma2c$oc$value[ix])
 ```
 
-Let's try limiting the total contribution to 20%. This is accomplished by adding an additional column to the `parents` data.frame, where the values represent the coefficients $\mathbf{a}$ of the contribution variables $\mathbf{y}$, and the column header is parsed to complete the equation. In this case, the header "lt0.5" represents less than or equal to 0.2:
-$$ \mathbf{a}^\prime \mathbf{y} \le 0.2$$
+Let's try limiting the total contribution to 25%. This is accomplished by adding an additional column to the `parents` data.frame, where the values represent the coefficients $\mathbf{a}$ of the contribution variables $\mathbf{y}$, and the column header is parsed to complete the equation. In this case, the header "lt0.25" represents less than or equal to 0.25:
+$$ \mathbf{a}^\prime \mathbf{y} \le 0.25$$
 
 ```{r}
-parents$lt0.2 <- ifelse(parents$id %in% CMS.id,1,0)
-head(parents)
+parents2$lt0.25 <- ifelse(parents2$id %in% CMS.id,1,0)
+head(parents2)
 
 oma2d <- oma(dF=0.01, parents=parents2, matings=matings2, ploidy=4, 
              K=data$K, min.a=0.005)

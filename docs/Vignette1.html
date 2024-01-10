@@ -346,12 +346,15 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 from the University of Wisconsin-Madison.</p>
 <p>The starting point for analysis is the function
 <code>read_data</code>. The first argument is the name of the CSV input
-file with the marker effects and allele dosage data. The second argument
-is the name of the CSV input file with the kinship matrix. If the
-kinship file is omitted, <code>read_data</code> expects an additional
-column in the geno file with base population allele frequencies, to
-properly calculate inbreeding. Consult the help page for more
-information on file formats.</p>
+file with the marker effects and allele dosage data. The additive and
+dominance marker effects should correspond to a breeding value
+parameterization (including heterosis/inbreeding depression) and can be
+estimated with <a href="https://github.com/jendelman/StageWise">R/StageWise</a>. The
+second argument is the name of the CSV input file with the kinship
+matrix. If the kinship file is omitted, <code>read_data</code> expects
+an additional column in the geno file with base population allele
+frequencies, to properly calculate inbreeding. Consult the help page for
+more information on file formats.</p>
 <p>The <code>matings</code> argument indicates how to create the table
 of possible matings. The option below is “all”, which creates all unique
 parental combinations. When argument <code>standardize</code> is TRUE,
@@ -390,7 +393,7 @@ the response values.</p>
 ## 5  W19013-4 2.2736641
 ## 6  W19016-5 2.8195329</code></pre>
 <div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a><span class="fu">head</span>(data<span class="sc">$</span>matings)</span></code></pre></div>
-<pre><code>##      female      male      merit
+<pre><code>##     parent1   parent2      merit
 ## 1 W19009-15 W19009-15 -1.2968951
 ## 2 W19009-22 W19009-15 -0.0626500
 ## 3 W19009-26 W19009-15 -0.1646695
@@ -400,16 +403,19 @@ the response values.</p>
 <p>As shown above, the <code>parents</code> output contains the
 predicted merit (GEBV) for each individual. The <code>matings</code>
 output contains the predicted merit ( F1 progeny mean) for each possible
-mating.</p>
+mating. For dioecious species (with separate sexes), a data frame with
+sex information is needed as argument <code>sex</code> in
+<code>read_data</code>, and the column headers for the matings are
+“female”,“male” instead of “parent1”,“parent2”.</p>
 <p>The <code>ocs</code> and <code>oma</code> functions are used to
 determine the optimal genetic contributions. Both require the argument
-<code>parents</code>, which in addition to the merits must have the
-minimum and maximum contributions. In this case we used min=0 and max=1
-for all parents, but this can be tailored to each parent. The
-<code>oma</code> function also requires a table of possible matings with
-merit, min, and max. Common guidance in animal breeding is to target an
-inbreeding rate (dF) of 0.005 to 0.01, so we begin with those
-values.</p>
+<code>parents</code>, which must specify the minimum and maximum
+contributions. In this case we used min=0 and max=1 for all parents, but
+this can be tailored to each parent. For <code>oma</code>, the parental
+merits are not used, so this column is omitted. Rather, the merit of
+each mating is needed, along with its min and max. Common guidance in
+animal breeding is to target an inbreeding rate (dF) of 0.005 to 0.01,
+so we begin with those values.</p>
 <div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" tabindex="-1"></a>parents <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(data<span class="sc">$</span>parents, <span class="at">min=</span><span class="dv">0</span>, <span class="at">max=</span><span class="dv">1</span>)</span>
 <span id="cb9-2"><a href="#cb9-2" tabindex="-1"></a></span>
 <span id="cb9-3"><a href="#cb9-3" tabindex="-1"></a>ocs1 <span class="ot">&lt;-</span> <span class="fu">ocs</span>(<span class="at">dF=</span><span class="fl">0.005</span>, <span class="at">parents=</span>parents, <span class="at">ploidy=</span><span class="dv">4</span>, <span class="at">K=</span>data<span class="sc">$</span>K)</span>
@@ -437,9 +443,9 @@ and dF2, which correspond to the rates over the next two generations.
 The COMA manuscript (in preparation) provides a fuller explanation of
 why dF2 is needed, but numerical evidence is shown below. OMA is
 theoretically superior to OCS because it accommodates non-random mating,
-and yet the response was lower for OMA than OCS when dF=0.005. This is
-likely due to the approximations used in OCS and explained more fully in
-the manuscript.</p>
+and yet the predicted merit was lower for OMA than OCS when dF=0.005.
+This is likely due to the approximations used in OCS, both for merit and
+inbreeding, and should not be interpreted as a true advantage.</p>
 <p>Now let’s examine the optimum contributions, which are returned as
 <code>oc</code> for the parental contributions in both functions. The
 optimal mate allocations are returned as <code>om</code> by
@@ -479,8 +485,8 @@ optimal mate allocations are returned as <code>om</code> by
 <table>
 <thead>
 <tr class="header">
-<th align="left">female</th>
-<th align="left">male</th>
+<th align="left">parent1</th>
+<th align="left">parent2</th>
 <th align="right">value</th>
 </tr>
 </thead>
@@ -576,38 +582,38 @@ parameters for <code>oma</code> and <code>ocs</code>, respectively.</p>
 <thead>
 <tr class="header">
 <th align="left"></th>
-<th align="left">female</th>
-<th align="left">male</th>
+<th align="left">parent1</th>
+<th align="left">parent2</th>
 <th align="right">value</th>
 </tr>
 </thead>
 <tbody>
 <tr class="odd">
-<td align="left">296</td>
+<td align="left">290</td>
 <td align="left">W19028-23</td>
 <td align="left">W19012-12</td>
 <td align="right">0.099</td>
 </tr>
 <tr class="even">
-<td align="left">299</td>
+<td align="left">293</td>
 <td align="left">W19031-14</td>
 <td align="left">W19012-12</td>
 <td align="right">0.038</td>
 </tr>
 <tr class="odd">
-<td align="left">315</td>
+<td align="left">309</td>
 <td align="left">W20005-13</td>
 <td align="left">W19012-12</td>
 <td align="right">0.091</td>
 </tr>
 <tr class="even">
-<td align="left">320</td>
+<td align="left">314</td>
 <td align="left">W20005-7</td>
 <td align="left">W19012-12</td>
 <td align="right">0.051</td>
 </tr>
 <tr class="odd">
-<td align="left">322</td>
+<td align="left">316</td>
 <td align="left">W20012-1</td>
 <td align="left">W19012-12</td>
 <td align="right">0.021</td>
@@ -658,7 +664,7 @@ using the <code>lapply</code> command:</p>
 </tbody>
 </table>
 <p>The above table illustrates the significance of the dF2 parameter,
-which is hitting the upper limit even when dF1 is not.</p>
+which is at the upper limit even when dF1 is not.</p>
 <p>The <code>plot_ribbon</code> command produces ribbon plots of the
 optimal contributions or allocations. The argument <code>min.c</code>
 behaves similarly as above, eliminating values below the threshold and
@@ -688,61 +694,61 @@ genetic markers.</p>
 ## CMS  N  Y
 ##   N 23 29
 ##   Y  5 36</code></pre>
-<div class="sourceCode" id="cb26"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb26-1"><a href="#cb26-1" tabindex="-1"></a>CMS.id <span class="ot">&lt;-</span> data2<span class="sc">$</span>id[data2<span class="sc">$</span>CMS<span class="sc">==</span><span class="st">&quot;Y&quot;</span>]</span>
-<span id="cb26-2"><a href="#cb26-2" tabindex="-1"></a>PVYR.id <span class="ot">&lt;-</span> data2<span class="sc">$</span>id[data2<span class="sc">$</span>PVYR<span class="sc">==</span><span class="st">&quot;Y&quot;</span>]</span></code></pre></div>
+<div class="sourceCode" id="cb26"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb26-1"><a href="#cb26-1" tabindex="-1"></a>PVYR.id <span class="ot">&lt;-</span> data2<span class="sc">$</span>id[data2<span class="sc">$</span>PVYR<span class="sc">==</span><span class="st">&quot;Y&quot;</span>]</span>
+<span id="cb26-2"><a href="#cb26-2" tabindex="-1"></a>CMS.id <span class="ot">&lt;-</span> data2<span class="sc">$</span>id[data2<span class="sc">$</span>CMS<span class="sc">==</span><span class="st">&quot;Y&quot;</span>]</span></code></pre></div>
 <p>The virus resistance trait is important enough that we typically
-require every cross to have at least one resistant parent. Furthermore,
-CMS individuals cannot be male parents. We will therefore remove any
-matings that violate these requirements (equivalent to putting the
-maximum allocation at 0).</p>
-<div class="sourceCode" id="cb27"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb27-1"><a href="#cb27-1" tabindex="-1"></a>CMS.test <span class="ot">&lt;-</span> <span class="sc">!</span>(matings<span class="sc">$</span>male <span class="sc">%in%</span> CMS.id)</span>
-<span id="cb27-2"><a href="#cb27-2" tabindex="-1"></a>PVY.test <span class="ot">&lt;-</span> matings<span class="sc">$</span>female <span class="sc">%in%</span> PVYR.id <span class="sc">|</span> </span>
-<span id="cb27-3"><a href="#cb27-3" tabindex="-1"></a>              matings<span class="sc">$</span>male <span class="sc">%in%</span> PVYR.id</span>
-<span id="cb27-4"><a href="#cb27-4" tabindex="-1"></a>matings2 <span class="ot">&lt;-</span> matings[CMS.test <span class="sc">&amp;</span> PVY.test,]</span>
-<span id="cb27-5"><a href="#cb27-5" tabindex="-1"></a><span class="fu">nrow</span>(matings)</span></code></pre></div>
+require every cross to have at least one resistant parent. This can be
+accomplished by eliminating matings without a resistant parent
+(equivalent to putting the maximum allocation at 0). Furthermore, every
+mating must have at least one parent that is not CMS (to be the
+male).</p>
+<div class="sourceCode" id="cb27"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb27-1"><a href="#cb27-1" tabindex="-1"></a>PVY.test <span class="ot">&lt;-</span> matings<span class="sc">$</span>parent1 <span class="sc">%in%</span> PVYR.id <span class="sc">|</span> matings<span class="sc">$</span>parent2 <span class="sc">%in%</span> PVYR.id</span>
+<span id="cb27-2"><a href="#cb27-2" tabindex="-1"></a>CMS.test <span class="ot">&lt;-</span> <span class="sc">!</span>(matings<span class="sc">$</span>parent1 <span class="sc">%in%</span> CMS.id <span class="sc">&amp;</span> matings<span class="sc">$</span>parent2 <span class="sc">%in%</span> CMS.id)</span>
+<span id="cb27-3"><a href="#cb27-3" tabindex="-1"></a>matings2 <span class="ot">&lt;-</span> matings[PVY.test <span class="sc">&amp;</span> CMS.test,]</span>
+<span id="cb27-4"><a href="#cb27-4" tabindex="-1"></a><span class="fu">nrow</span>(matings)</span></code></pre></div>
 <pre><code>## [1] 4371</code></pre>
-<div class="sourceCode" id="cb29"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb29-1"><a href="#cb29-1" tabindex="-1"></a><span class="fu">nrow</span>(matings2) <span class="co">#eliminates 2168 possible matings</span></span></code></pre></div>
-<pre><code>## [1] 2203</code></pre>
+<div class="sourceCode" id="cb29"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb29-1"><a href="#cb29-1" tabindex="-1"></a><span class="fu">nrow</span>(matings2) <span class="co">#eliminates 1252 possible matings</span></span></code></pre></div>
+<pre><code>## [1] 3119</code></pre>
 <div class="sourceCode" id="cb31"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb31-1"><a href="#cb31-1" tabindex="-1"></a>oma2c <span class="ot">&lt;-</span> <span class="fu">oma</span>(<span class="at">dF=</span><span class="fl">0.01</span>, <span class="at">parents=</span>parents2, <span class="at">matings=</span>matings2, <span class="at">ploidy=</span><span class="dv">4</span>, </span>
 <span id="cb31-2"><a href="#cb31-2" tabindex="-1"></a>             <span class="at">K=</span>data<span class="sc">$</span>K, <span class="at">min.a=</span><span class="fl">0.005</span>)</span>
 <span id="cb31-3"><a href="#cb31-3" tabindex="-1"></a>oma2c<span class="sc">$</span>response</span></code></pre></div>
-<pre><code>##         dF1         dF2       merit   diversity 
-## 0.010027170 0.009976767 1.752347962 2.683944640</code></pre>
-<p>Compared to the previous results, the optimum response is lower under
-this restricted mating plan, which is to be expected.</p>
+<pre><code>##        dF1        dF2      merit  diversity 
+## 0.01011366 0.01003199 1.77070035 2.70898320</code></pre>
+<p>The constraints have reduced the optimal merit from 2.04 (shown
+earlier) to 1.77, which is to be expected.</p>
 <p>COMA also accepts linear equality and inequality constraints on the
-parental contributions. For example, even though we have ensured no CMS
-clones are male parents, if all females were CMS, the next generation
-would have no potential male parents! We therefore need to limit the
-parental contribution of CMS clones. The following code shows that the
-total contribution for the previous solution was 38.6%.</p>
+parental contributions. This can be used to limit the frequency of CMS
+clones in the mating plan, which is beneficial because every mating with
+a CMS parent (as the female) reduces the number of male parent
+candidates in the next generation. The following code shows that the
+total contribution of CMS parents in the previous solution was 40%.</p>
 <div class="sourceCode" id="cb33"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb33-1"><a href="#cb33-1" tabindex="-1"></a>ix <span class="ot">&lt;-</span> oma2c<span class="sc">$</span>oc<span class="sc">$</span>id <span class="sc">%in%</span> CMS.id</span>
 <span id="cb33-2"><a href="#cb33-2" tabindex="-1"></a><span class="fu">sum</span>(oma2c<span class="sc">$</span>oc<span class="sc">$</span>value[ix])</span></code></pre></div>
-<pre><code>## [1] 0.3863718</code></pre>
-<p>Let’s try limiting the total contribution to 20%. This is
+<pre><code>## [1] 0.3962124</code></pre>
+<p>Let’s try limiting the total contribution to 25%. This is
 accomplished by adding an additional column to the <code>parents</code>
 data.frame, where the values represent the coefficients <span class="math inline">\(\mathbf{a}\)</span> of the contribution variables
 <span class="math inline">\(\mathbf{y}\)</span>, and the column header
-is parsed to complete the equation. In this case, the header “lt0.5”
-represents less than or equal to 0.2: <span class="math display">\[
-\mathbf{a}^\prime \mathbf{y} \le 0.2\]</span></p>
-<div class="sourceCode" id="cb35"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb35-1"><a href="#cb35-1" tabindex="-1"></a>parents<span class="sc">$</span>lt0<span class="fl">.2</span> <span class="ot">&lt;-</span> <span class="fu">ifelse</span>(parents<span class="sc">$</span>id <span class="sc">%in%</span> CMS.id,<span class="dv">1</span>,<span class="dv">0</span>)</span>
-<span id="cb35-2"><a href="#cb35-2" tabindex="-1"></a><span class="fu">head</span>(parents)</span></code></pre></div>
-<pre><code>##          id     merit min max lt0.2
-## 1 W19009-15 0.6933201   0   1     1
-## 2 W19009-22 0.5588516   0   1     1
-## 3 W19009-26 0.7648094   0   1     1
-## 4 W19012-12 2.7363997   0   1     0
-## 5  W19013-4 2.2736641   0   1     0
-## 6  W19016-5 2.8195329   0   1     1</code></pre>
+is parsed to complete the equation. In this case, the header “lt0.25”
+represents less than or equal to 0.25: <span class="math display">\[
+\mathbf{a}^\prime \mathbf{y} \le 0.25\]</span></p>
+<div class="sourceCode" id="cb35"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb35-1"><a href="#cb35-1" tabindex="-1"></a>parents2<span class="sc">$</span>lt0<span class="fl">.25</span> <span class="ot">&lt;-</span> <span class="fu">ifelse</span>(parents2<span class="sc">$</span>id <span class="sc">%in%</span> CMS.id,<span class="dv">1</span>,<span class="dv">0</span>)</span>
+<span id="cb35-2"><a href="#cb35-2" tabindex="-1"></a><span class="fu">head</span>(parents2)</span></code></pre></div>
+<pre><code>##          id min max lt0.25
+## 1 W19009-15   0   1      1
+## 2 W19009-22   0   1      1
+## 3 W19009-26   0   1      1
+## 4 W19012-12   0   1      0
+## 5  W19013-4   0   1      0
+## 6  W19016-5   0   1      1</code></pre>
 <div class="sourceCode" id="cb37"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb37-1"><a href="#cb37-1" tabindex="-1"></a>oma2d <span class="ot">&lt;-</span> <span class="fu">oma</span>(<span class="at">dF=</span><span class="fl">0.01</span>, <span class="at">parents=</span>parents2, <span class="at">matings=</span>matings2, <span class="at">ploidy=</span><span class="dv">4</span>, </span>
 <span id="cb37-2"><a href="#cb37-2" tabindex="-1"></a>             <span class="at">K=</span>data<span class="sc">$</span>K, <span class="at">min.a=</span><span class="fl">0.005</span>)</span>
 <span id="cb37-3"><a href="#cb37-3" tabindex="-1"></a>oma2d<span class="sc">$</span>response</span></code></pre></div>
-<pre><code>##         dF1         dF2       merit   diversity 
-## 0.010027170 0.009976767 1.752347962 2.683944640</code></pre>
+<pre><code>##        dF1        dF2      merit  diversity 
+## 0.01001070 0.01005003 1.71881468 2.67097461</code></pre>
 <div class="sourceCode" id="cb39"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb39-1"><a href="#cb39-1" tabindex="-1"></a>ix <span class="ot">&lt;-</span> oma2d<span class="sc">$</span>oc<span class="sc">$</span>id <span class="sc">%in%</span> CMS.id</span>
 <span id="cb39-2"><a href="#cb39-2" tabindex="-1"></a><span class="fu">sum</span>(oma2d<span class="sc">$</span>oc<span class="sc">$</span>value[ix])</span></code></pre></div>
-<pre><code>## [1] 0.3863718</code></pre>
+<pre><code>## [1] 0.2494314</code></pre>
 <p>The response goes down again because of the additional constraint,
 which the final line verifies is met.</p>
 </div>

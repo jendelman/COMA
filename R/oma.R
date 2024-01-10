@@ -4,7 +4,7 @@
 #' 
 #' The first three columns of \code{parents} should be named "id", "min", "max", with an optional fourth column "female" to indicate sex in dioecious species. Additional columns can be used to specify constraints on linear combinations of the contributions. The values are the coefficients of the contribution variables, and the name of each column specifies the right-hand side of the constraint. Each name must begin with "lt","gt", or "eq", followed by a non-negative numeric value. For example, "lt0.5" means less than or equal to 0.5.
 #' 
-#' The data.frame \code{matings} has five columns: female, male, merit, min, max. 
+#' The data.frame \code{matings} has five columns: "female, male, merit, min, max" for dioecious species, or else "parent1, parent2, merit, min, max".
 #' 
 #' The average inbreeding coefficient of the current generation is based on all individuals in \code{K}, which may exceed the list of individuals in \code{parents}.
 #'
@@ -36,9 +36,11 @@ oma <- function(dF, parents, matings, ploidy, K, min.a=0,
   parents$id <- as.character(parents$id)
   stopifnot(parents$max <= 1)
   stopifnot(parents$min >= 0)
-  stopifnot(c("female","male","merit","min","max") %in% colnames(matings))
+  stopifnot(c("merit","min","max") == colnames(matings)[3:5])
   stopifnot(matings$max <= 1)
   stopifnot(matings$min >= 0)
+  
+  colnames(matings) <- c("female","male","merit","min","max")
   
   Fi <- matrix((ploidy*diag(K)-1)/(ploidy-1),nrow=1)
   F.avg <- mean(as.numeric(Fi))
@@ -170,6 +172,9 @@ oma <- function(dF, parents, matings, ploidy, K, min.a=0,
       }
     }
   }
+  
+  if (!sexed)
+    colnames(om) <- replace(colnames(om),1:2,c("parent1","parent2"))
   
   if (is.na(merit)) {
     return(list(response=c(dF=as.numeric(NA), merit=as.numeric(NA), diversity=as.numeric(NA)), 

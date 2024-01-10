@@ -4,13 +4,13 @@
 #' 
 #' The first column of \code{geno.file} is marker name. The second column contains the additive effects for the breeding value parameterization, and (digenic) dominance effects should be in the third column with the header "dom". When \code{kinship.file=NULL}, the software assumes the following column "p.ref" contains allele frequencies for the reference population to control genomic inbreeding. Subsequent columns contain the marker data for the population, coded as allele dosage, from 0 to ploidy. 
 #' 
-#' There are several options for argument \code{matings}: (1) "none" = no matings; (2) "all" = all possible matings of the individuals in \code{geno.file} (excluding reciprocals); (3) a character vector of genotype ids to calculate all pairs of matings; (4) a data.frame of desired matings with 2 columns: female, male. 
+#' There are several options for argument \code{matings}: (1) "none" = no matings; (2) "all" = all possible matings of the individuals in \code{geno.file} (excluding reciprocals); (3) a character vector of genotype ids to calculate all pairs of matings; (4) a 2-column data.frame of desired matings with header "female","male" for dioecious species or else "parent1","parent2". Self-matings are included under options (2) and (3) but can be easily removed in the output.
 #'
 #' @param geno.file file with marker effects and genotypes
 #' @param kinship.file NULL
 #' @param ploidy even integer
 #' @param sex optional, data frame with columns id and female (T/F)
-#' @param matings see Details 
+#' @param matings see Details
 #' @param standardize T/F, standardize merit in parental candidates
 #' @param n.core multi-core evaluation
 #'
@@ -150,7 +150,13 @@ read_data <- function(geno.file, kinship.file=NULL, ploidy, sex=NULL,
     if (standardize)
       matings$merit <- (matings$merit-mean.merit)/sd.merit
     
+    if (is.null(sex)) {
+      matings <- data.frame(parent1=matings$female, parent2=matings$male, 
+                            merit=matings$merit)
+    } else {
+      matings <- matings[,c("female","male","merit")]
+    }
     return(list(K=K, parents=parents[,setdiff(colnames(parents),c("add","dom"))], 
-                matings=matings[,c("female","male","merit")]))
+                matings=matings))
   } 
 }
