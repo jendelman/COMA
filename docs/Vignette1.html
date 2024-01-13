@@ -342,15 +342,17 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 
 
 
-<p>The starting point for analysis is the function
-<code>read_data</code>. The first argument is the name of a CSV input
-file with the marker effects and allele dosage data. The additive and
-dominance marker effects should correspond to a breeding value
-parameterization (including heterosis/inbreeding depression) and can be
-estimated using the <code>blup</code> command in <a href="https://github.com/jendelman/StageWise">R/StageWise</a>. The
-vignette dataset comes from the University of Wisconsin potato breeding
-program. There are 93 tetraploid clones genotyped at nearly 15K markers,
-and the marker effects are derived from a multi-trait index.</p>
+<p>COMA requires two input files. The first file contains the marker
+effects and allele dosage data for the parental candidates. Dominance
+marker effects are optional, but when included should correspond to a
+breeding value parameterization, including the effect of
+heterosis/inbreeding depression <a href="https://doi.org/10.1007/s00122-023-04298-x">(Endelman 2023)</a>.
+The <code>blup</code> command in <a href="https://github.com/jendelman/StageWise">R/StageWise</a> is one
+option to compute marker effects.</p>
+<p>The vignette dataset comes from the University of Wisconsin potato
+breeding program. There are 93 tetraploid clones genotyped at nearly 15K
+markers, and the marker effects are derived from a multi-trait
+index.</p>
 <div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a>geno.file <span class="ot">&lt;-</span> <span class="fu">system.file</span>(<span class="st">&quot;vignette_data&quot;</span>, <span class="st">&quot;geno.csv&quot;</span>, <span class="at">package =</span> <span class="st">&quot;COMA&quot;</span>)</span>
 <span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a>geno <span class="ot">&lt;-</span> <span class="fu">read.csv</span>(geno.file,<span class="at">check.names=</span>F)</span>
 <span id="cb1-3"><a href="#cb1-3" tabindex="-1"></a>geno[<span class="dv">1</span><span class="sc">:</span><span class="dv">4</span>,<span class="dv">1</span><span class="sc">:</span><span class="dv">5</span>]</span></code></pre></div>
@@ -359,28 +361,27 @@ and the marker effects are derived from a multi-trait index.</p>
 ## 2 PotVar0000025  0.136 -1.373         1         2
 ## 3 PotVar0000040 -1.707 -0.184         0         0
 ## 4 PotVar0000042  3.717  0.880         1         2</code></pre>
-<p>The second argument to <code>read_data</code> is the name of a CSV
-file with a kinship matrix to control inbreeding. Kinship should be
-calculated based on the probability of IBD or IBS (not a G matrix). The
-package comes with a pedigree-based, IBD kinship matrix for the 93
-clones, estimated using R package <a href="https://cran.r-project.org/web/packages/AGHmatrix/index.html">AGHmatrix</a>.</p>
-<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a><span class="fu">library</span>(COMA)</span>
-<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a>K.file <span class="ot">&lt;-</span> <span class="fu">system.file</span>(<span class="st">&quot;vignette_data&quot;</span>, <span class="st">&quot;IBD.kinship.csv&quot;</span>, <span class="at">package =</span> <span class="st">&quot;COMA&quot;</span>)</span>
-<span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a></span>
-<span id="cb3-4"><a href="#cb3-4" tabindex="-1"></a><span class="co">#preview files</span></span>
-<span id="cb3-5"><a href="#cb3-5" tabindex="-1"></a>K <span class="ot">&lt;-</span> <span class="fu">as.matrix</span>(<span class="fu">read.csv</span>(K.file,<span class="at">check.names=</span>F,<span class="at">row.names=</span><span class="dv">1</span>))</span>
-<span id="cb3-6"><a href="#cb3-6" tabindex="-1"></a>K[<span class="dv">1</span><span class="sc">:</span><span class="dv">3</span>,<span class="dv">1</span><span class="sc">:</span><span class="dv">3</span>]</span></code></pre></div>
+<p>The second input file is the kinship matrix to control inbreeding.
+Kinship should be calculated based on the probability of IBD or IBS (not
+a G matrix). The vignette dataset is a pedigree-based, IBD kinship
+matrix for the 93 clones, estimated using R package <a href="https://cran.r-project.org/web/packages/AGHmatrix/index.html">AGHmatrix</a>.</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a>K.file <span class="ot">&lt;-</span> <span class="fu">system.file</span>(<span class="st">&quot;vignette_data&quot;</span>, <span class="st">&quot;IBD.kinship.csv&quot;</span>, <span class="at">package =</span> <span class="st">&quot;COMA&quot;</span>)</span>
+<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a></span>
+<span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a><span class="co">#preview files</span></span>
+<span id="cb3-4"><a href="#cb3-4" tabindex="-1"></a>K <span class="ot">&lt;-</span> <span class="fu">as.matrix</span>(<span class="fu">read.csv</span>(K.file,<span class="at">check.names=</span>F,<span class="at">row.names=</span><span class="dv">1</span>))</span>
+<span id="cb3-5"><a href="#cb3-5" tabindex="-1"></a>K[<span class="dv">1</span><span class="sc">:</span><span class="dv">3</span>,<span class="dv">1</span><span class="sc">:</span><span class="dv">3</span>]</span></code></pre></div>
 <pre><code>##           W19009-15 W19009-22 W19009-26
 ## W19009-15    0.2631    0.1388    0.1388
 ## W19009-22    0.1388    0.2631    0.1388
 ## W19009-26    0.1388    0.1388    0.2631</code></pre>
 <p>Now we are ready for <code>read_data</code>:</p>
-<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a>data <span class="ot">&lt;-</span> <span class="fu">read_data</span>(<span class="at">geno.file=</span>geno.file,</span>
-<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a>                  <span class="at">kinship.file=</span>K.file,</span>
-<span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a>                  <span class="at">ploidy=</span><span class="dv">4</span>, <span class="at">matings=</span><span class="st">&quot;all&quot;</span>,</span>
-<span id="cb5-4"><a href="#cb5-4" tabindex="-1"></a>                  <span class="at">standardize=</span><span class="cn">TRUE</span>, <span class="at">n.core=</span><span class="dv">2</span>)</span>
-<span id="cb5-5"><a href="#cb5-5" tabindex="-1"></a></span>
-<span id="cb5-6"><a href="#cb5-6" tabindex="-1"></a><span class="fu">head</span>(data<span class="sc">$</span>parents)</span></code></pre></div>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a><span class="fu">library</span>(COMA)</span>
+<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a>data <span class="ot">&lt;-</span> <span class="fu">read_data</span>(<span class="at">geno.file=</span>geno.file,</span>
+<span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a>                  <span class="at">kinship.file=</span>K.file,</span>
+<span id="cb5-4"><a href="#cb5-4" tabindex="-1"></a>                  <span class="at">ploidy=</span><span class="dv">4</span>, <span class="at">matings=</span><span class="st">&quot;all&quot;</span>,</span>
+<span id="cb5-5"><a href="#cb5-5" tabindex="-1"></a>                  <span class="at">standardize=</span><span class="cn">TRUE</span>, <span class="at">n.core=</span><span class="dv">2</span>)</span>
+<span id="cb5-6"><a href="#cb5-6" tabindex="-1"></a></span>
+<span id="cb5-7"><a href="#cb5-7" tabindex="-1"></a><span class="fu">head</span>(data<span class="sc">$</span>parents)</span></code></pre></div>
 <pre><code>##          id     merit
 ## 1 W19009-15 0.6933201
 ## 2 W19009-22 0.5588516
@@ -398,13 +399,15 @@ clones, estimated using R package <a href="https://cran.r-project.org/web/packag
 ## 6  W19016-5 W19009-15  1.6016203</code></pre>
 <p>The <code>matings</code> argument for <code>read_data</code>
 indicates how to create the table of possible matings. The above example
-used “all”, which creates all unique parental combinations. When
-argument <code>standardize</code> is TRUE, the trait is centered and
-scaled so that the parental population has zero mean and unit variance.
-This is for convenience when interpreting the response values.</p>
+used “all”, which creates all unique parental combinations. Consult the
+<a href="https://jendelman.github.io/COMA/manual.pdf">function
+documentation</a> for other options. When argument
+<code>standardize</code> is TRUE, the trait is centered and scaled so
+that the parental population has zero mean and unit variance. This is
+for convenience when interpreting the response values.</p>
 <p>As shown above, the <code>parents</code> output contains the
 predicted merit (GEBV) for each individual. The <code>matings</code>
-output contains the predicted merit ( F1 progeny mean) for each possible
+output contains the predicted merit (F1 progeny mean) for each possible
 mating. For dioecious species (with separate sexes), a data frame with
 sex information is needed as argument <code>sex</code> in
 <code>read_data</code>, and the column headers for the matings are
@@ -442,14 +445,15 @@ diversity for the optimized parental contributions. For both OCS and
 OMA, higher dF leads to higher merit and lower diversity, which is an
 expected trade-off. The dF values returned by the software are the
 realized inbreeding rates, which can exceed the target due to
-thresholding (see below). OMA returns two realized inbreeding rates, dF1
-and dF2, which correspond to the rates over the next two generations.
-The COMA manuscript (in preparation) provides a fuller explanation of
-why dF2 is needed, but numerical evidence is shown below. OMA is
-theoretically superior to OCS because it accommodates non-random mating,
-and yet the predicted merit was lower for OMA than OCS when dF=0.005.
-This is likely due to the approximations used in OCS, both for merit and
-inbreeding, and should not be interpreted as a true advantage.</p>
+thresholding (see below).</p>
+<p>OMA returns two realized inbreeding rates, dF1 and dF2, which
+correspond to the rates over the next two generations. The COMA
+manuscript (in preparation) provides a fuller explanation of why dF2 is
+needed, but numerical evidence is shown below. OMA is theoretically
+superior to OCS because it accommodates non-random mating, and yet the
+predicted merit was lower for OMA than OCS when dF=0.005. This is likely
+due to the approximations used in OCS, both for merit and inbreeding,
+and should not be interpreted as a true advantage.</p>
 <p>Now let’s examine the optimum contributions, which are returned as
 <code>oc</code> for the parental contributions in both functions. The
 optimal mate allocations are returned as <code>om</code> by
