@@ -15,25 +15,30 @@ opts_chunk$set(echo = TRUE,message=FALSE,warning=FALSE,comment="##",
 opts_knit$set(root.dir="~/Box Sync/Endelman/Software/COMA")
 ```
 
-The functionality of COMA is illustrated using tetraploid potato data from the University of Wisconsin-Madison. 
-
-The starting point for analysis is the function `read_data`. The first argument is the name of the CSV input file with the marker effects and allele dosage data. The additive and dominance marker effects should correspond to a breeding value parameterization (including heterosis/inbreeding depression) and can be estimated with [R/StageWise](https://github.com/jendelman/StageWise). The second argument is the name of the CSV input file with the kinship matrix. If the kinship file is omitted, `read_data` expects an additional column in the geno file with base population allele frequencies, to properly calculate inbreeding. Consult the help page for more information on file formats. 
-
-The `matings` argument indicates how to create the table of possible matings. The option below is "all", which creates all unique parental combinations. When argument `standardize` is TRUE, the trait is centered and scaled so that the parental population has zero mean and unit variance. This is for convenience when interpreting the response values.
+The starting point for analysis is the function `read_data`. The first argument is the name of a CSV input file with the marker effects and allele dosage data. The additive and dominance marker effects should correspond to a breeding value parameterization (including heterosis/inbreeding depression) and can be estimated using the `blup` command in [R/StageWise](https://github.com/jendelman/StageWise). The vignette dataset comes from the University of Wisconsin potato breeding program. There are 93 tetraploid clones genotyped at nearly 15K markers, and the marker effects are derived from a multi-trait index.
 
 ```{r}
-library(COMA)
 geno.file <- system.file("vignette_data", "geno.csv", package = "COMA")
-kinship.file <- system.file("vignette_data", "kinship.csv", package = "COMA")
-
-#preview files
 geno <- read.csv(geno.file,check.names=F)
 geno[1:4,1:5]
-kinship <- read.csv(kinship.file,check.names=F,row.names=1)
-kinship[1:3,1:3]
+```
 
+The second argument to `read_data` is the name of a CSV file with a kinship matrix to control inbreeding. Kinship should be calculated based on the probability of IBD or IBS (not a G matrix). The package comes with a pedigree-based, IBD kinship matrix for the 93 clones, estimated using R package [AGHmatrix](https://cran.r-project.org/web/packages/AGHmatrix/index.html).
+
+```{r,fig.width=4,fig.height=4}
+library(COMA)
+K.file <- system.file("vignette_data", "IBD.kinship.csv", package = "COMA")
+
+#preview files
+K <- as.matrix(read.csv(K.file,check.names=F,row.names=1))
+K[1:3,1:3]
+```
+
+Now we are ready for `read_data`:
+
+```{r}
 data <- read_data(geno.file=geno.file,
-                  kinship.file=kinship.file,
+                  kinship.file=K.file,
                   ploidy=4, matings="all",
                   standardize=TRUE, n.core=2)
 
@@ -41,7 +46,11 @@ head(data$parents)
 head(data$matings)
 ```
 
+The `matings` argument for `read_data` indicates how to create the table of possible matings. The above example used "all", which creates all unique parental combinations. When argument `standardize` is TRUE, the trait is centered and scaled so that the parental population has zero mean and unit variance. This is for convenience when interpreting the response values.
+
 As shown above, the `parents` output contains the predicted merit (GEBV) for each individual. The `matings` output contains the predicted merit ( F1 progeny mean) for each possible mating. For dioecious species (with separate sexes), a data frame with sex information is needed as argument `sex` in `read_data`, and the column headers for the matings are "female","male" instead of "parent1","parent2". 
+
+### OCS and OMA
 
 The `ocs` and `oma` functions are used to determine the optimal genetic contributions. Both require the argument `parents`, which must specify the minimum and maximum contributions. In this case we used min=0 and max=1 for all parents, but this can be tailored to each parent. For `oma`, the parental merits are not used, so this column is omitted. Rather, the merit of each mating is needed, along with its min and max. Common guidance in animal breeding is to target an inbreeding rate (dF) of 0.005 to 0.01, so we begin with those values.
 

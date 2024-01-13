@@ -1,13 +1,15 @@
 #' Read data for OCS/OMA
 #' 
-#' Constructs the kinship matrix and predicts merit for OCS/OMA
+#' Predicts merit for OCS/OMA
 #' 
-#' The first column of \code{geno.file} is marker name. The second column contains the additive effects for the breeding value parameterization, and (digenic) dominance effects should be in the third column with the header "dom". When \code{kinship.file=NULL}, the software assumes the following column "p.ref" contains allele frequencies for the reference population to control genomic inbreeding. Subsequent columns contain the marker data for the population, coded as allele dosage, from 0 to ploidy. 
+#' The first column of \code{geno.file} is the marker name. The second column contains the additive effects for the breeding value parameterization, and (digenic) dominance effects (when available) should be in the third column with the header "dom". Subsequent columns contain the marker data for the population, coded as allele dosage, from 0 to ploidy. Missing marker data is imputed with the population mean.
+#' 
+#' The \code{kinship.file} should contain an N x N kinship matrix with id names in the first column and row.
 #' 
 #' There are several options for argument \code{matings}: (1) "none" = no matings; (2) "all" = all possible matings of the individuals in \code{geno.file} (excluding reciprocals); (3) a character vector of genotype ids to calculate all pairs of matings; (4) a 2-column data.frame of desired matings with header "female","male" for dioecious species or else "parent1","parent2". Self-matings are included under options (2) and (3) but can be easily removed in the output.
 #'
 #' @param geno.file file with marker effects and genotypes
-#' @param kinship.file NULL
+#' @param kinship.file file with kinship matrix
 #' @param ploidy even integer
 #' @param sex optional, data frame with columns id and female (T/F)
 #' @param matings see Details
@@ -16,41 +18,49 @@
 #'
 #' @return list containing
 #' \describe{
-#' \item{K}{genomic kinship matrix}
+#' \item{K}{kinship matrix}
 #' \item{parents}{data frame of individual merits}
 #' \item{matings}{data frame of mating merits}
 #'}
 #' @export
 #' @importFrom utils read.csv
 #' @importFrom stats sd
-#' @importFrom parallel makeCluster clusterExport parSapply stopCluster
+#' @importFrom parallel makeCluster clusterExport parSapply parLapply stopCluster
 
 
-read_data <- function(geno.file, kinship.file=NULL, ploidy, sex=NULL, 
+read_data <- function(geno.file, kinship.file, ploidy, sex=NULL, 
                       matings="none", standardize=FALSE, n.core=1) {
   
   data <- read.csv(file = geno.file,check.names=F,row.names=1)
   dominance <- (colnames(data)[2]=="dom")
-  geno.start <- 2 + as.integer(dominance) + as.integer(is.null(kinship.file))
+  geno.start <- 2 + as.integer(dominance) 
   
-  effects <- as.matrix(data[,1:(as.integer(dominance)+1),drop=FALSE])
+  effects <- as.matrix(data[,1:(geno.start-1),drop=FALSE])
   geno <- as.matrix(data[,geno.start:ncol(data)])
   
-  if (is.null(kinship.file)) {
-    p <- as.numeric(data[,as.integer(dominance)+2])
-  } else {
-    p <- apply(geno,1,mean,na.rm=T)/ploidy
+  # if (is.null(kinship.file)) {
+  #   p <- as.numeric(data[,as.integer(dominance)+2])
+  # } else {
+  
+  p <- apply(geno,1,mean,na.rm=T)/ploidy
+  
+  # }
+  
+  if (n.core > 1) {
+    cl <- makeCluster(n.core)
+    clusterExport(cl=cl,varlist=NULL)
   }
     
   rownames(geno) <- rownames(data)
   n <- ncol(geno)
+  m <- nrow(geno)
+  #polymorphic <- which(p >= 1/(ploidy*n))
+  #m <- length(polymorphic)
+  #stopifnot(m > 0)
+  #p <- p[polymorphic]
+  #geno <- geno[polymorphic,]
+  #effects <- effects[polymorphic,,drop=FALSE]
   id <- colnames(geno)
-  polymorphic <- which(p >= 1/(ploidy*n))
-  m <- length(polymorphic)
-  stopifnot(m > 0)
-  p <- p[polymorphic]
-  geno <- geno[polymorphic,]
-  effects <- effects[polymorphic,,drop=FALSE]
   markers <- rownames(geno)
   
   Pmat <- kronecker(matrix(p,nrow=1,ncol=m),matrix(1,nrow=n,ncol=1))
@@ -58,18 +68,11 @@ read_data <- function(geno.file, kinship.file=NULL, ploidy, sex=NULL,
   dimnames(coeff) <- list(id,markers)
   coeff[which(is.na(coeff))] <- 0
   
-  if (is.null(kinship.file)) {
-    scale <- ploidy*sum(p*(1-p))
-    K <- tcrossprod(coeff)/scale/ploidy
-    w <- 1e-5 
-    K <- (1-w)*K + w*mean(diag(K))*diag(n)
-  } else {
-    K <- as.matrix(read.csv(kinship.file,row.names=1,check.names=F))
-    colnames(K) <- rownames(K)
-    stopifnot(id %in% colnames(K))
-    K <- K[id,id]
-  }
-  
+  K <- as.matrix(read.csv(kinship.file,row.names=1,check.names=F))
+  colnames(K) <- rownames(K)
+  stopifnot(id %in% colnames(K))
+  K <- K[id,id]
+
   #predict merit
   #OCS
   parents <- data.frame(id=id, add=as.numeric(coeff %*% effects[,1,drop=FALSE]))
@@ -136,16 +139,16 @@ read_data <- function(geno.file, kinship.file=NULL, ploidy, sex=NULL,
       
       mate.list <- split(as.matrix(matings[,1:2]),f=1:nrow(matings))
       if (n.core > 1) {
-        cl <- makeCluster(n.core)
-        clusterExport(cl=cl,varlist=NULL)
         ans <- parSapply(cl=cl,X=mate.list,MPH,ploidy=ploidy,geno=geno)
-        stopCluster(cl)
       } else {
         ans <- sapply(mate.list,MPH,ploidy=ploidy,geno=geno)
         #ans[is.na(ans)] <- 0
       }
       matings$merit <- matings$merit + as.numeric(crossprod(ans,effects[,2]))
     }
+    
+    if (n.core > 1)
+      stopCluster(cl)
     
     if (standardize)
       matings$merit <- (matings$merit-mean.merit)/sd.merit
