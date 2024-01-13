@@ -1,6 +1,6 @@
 Package: COMA
 Title: Convex Optimization of Mate Allocation
-Version: 0.12
+Version: 0.13
 Author: Jeffrey B. Endelman
 Maintainer: Jeffrey Endelman <endelman@wisc.edu>
 Description: Convex Optimization of Mate Allocation

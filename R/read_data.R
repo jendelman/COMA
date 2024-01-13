@@ -37,29 +37,11 @@ read_data <- function(geno.file, kinship.file, ploidy, sex=NULL,
   
   effects <- as.matrix(data[,1:(geno.start-1),drop=FALSE])
   geno <- as.matrix(data[,geno.start:ncol(data)])
-  
-  # if (is.null(kinship.file)) {
-  #   p <- as.numeric(data[,as.integer(dominance)+2])
-  # } else {
-  
   p <- apply(geno,1,mean,na.rm=T)/ploidy
   
-  # }
-  
-  if (n.core > 1) {
-    cl <- makeCluster(n.core)
-    clusterExport(cl=cl,varlist=NULL)
-  }
-    
   rownames(geno) <- rownames(data)
   n <- ncol(geno)
   m <- nrow(geno)
-  #polymorphic <- which(p >= 1/(ploidy*n))
-  #m <- length(polymorphic)
-  #stopifnot(m > 0)
-  #p <- p[polymorphic]
-  #geno <- geno[polymorphic,]
-  #effects <- effects[polymorphic,,drop=FALSE]
   id <- colnames(geno)
   markers <- rownames(geno)
   
@@ -102,64 +84,68 @@ read_data <- function(geno.file, kinship.file, ploidy, sex=NULL,
     ploidy/4/(ploidy-1)*((Xi-Xj)^2 + 2/ploidy*Xi*Xj - (Xi+Xj))
   }
   
-  if (matings=="none") {
-    
-    return(list(K=K, parents=parents[,setdiff(colnames(parents),c("add","dom"))]))
-    
+  if (inherits(matings,"data.frame")) {
+    colnames(matings) <- c("female","male")
   } else {
-    #OMA
-    if (inherits(matings,"character")) {
-      if (matings=="all")
+    if (length(matings)==1) {
+      if (matings=="none") {
+        return(list(K=K, parents=parents[,setdiff(colnames(parents),c("add","dom"))]))
+      } else {
+        stopifnot(matings=="all")
         matings <- parents$id
-      if ("sex" %in% colnames(parents)) {
-        females <- intersect(parents$id[parents$female],matings)
-        males <- intersect(parents$id[!parents$female],matings)
-        stopifnot(length(females)>0 & length(males)>0)
-        matings <- data.frame(expand.grid(female=females,male=males,stringsAsFactors = F))
-      } else {
-        id2 <- intersect(matings,parents$id)
-        stopifnot(length(id2)>1)
-        matings <- data.frame(expand.grid(female=id2,male=id2,stringsAsFactors = F))
-        matings <- matings[matings$female >= matings$male,] 
       }
     }
-    stopifnot(nrow(matings)>0)
-    matings$female <- as.character(matings$female)
-    matings$male <- as.character(matings$male)
-    id2 <- union(matings$female,matings$male)
-    stopifnot(id2 %in% parents$id)
-    parents <- parents[parents$id %in% id2,]
-    matings$merit <- (parents$add[match(matings$female,parents$id)] +
-                        parents$add[match(matings$male,parents$id)])/2
     
-    if (dominance) {
-      matings$merit <- matings$merit + 
-                        (parents$dom[match(matings$female,parents$id)] +
-                         parents$dom[match(matings$male,parents$id)])/2
-      
-      mate.list <- split(as.matrix(matings[,1:2]),f=1:nrow(matings))
-      if (n.core > 1) {
-        ans <- parSapply(cl=cl,X=mate.list,MPH,ploidy=ploidy,geno=geno)
-      } else {
-        ans <- sapply(mate.list,MPH,ploidy=ploidy,geno=geno)
-        #ans[is.na(ans)] <- 0
-      }
-      matings$merit <- matings$merit + as.numeric(crossprod(ans,effects[,2]))
-    }
-    
-    if (n.core > 1)
-      stopCluster(cl)
-    
-    if (standardize)
-      matings$merit <- (matings$merit-mean.merit)/sd.merit
-    
-    if (is.null(sex)) {
-      matings <- data.frame(parent1=matings$female, parent2=matings$male, 
-                            merit=matings$merit)
+    if ("sex" %in% colnames(parents)) {
+      females <- intersect(parents$id[parents$female],matings)
+      males <- intersect(parents$id[!parents$female],matings)
+      stopifnot(length(females)>0 & length(males)>0)
+      matings <- data.frame(expand.grid(female=females,male=males,stringsAsFactors = F))
     } else {
-      matings <- matings[,c("female","male","merit")]
+      id2 <- intersect(matings,parents$id)
+      stopifnot(length(id2)>1)
+      matings <- data.frame(expand.grid(female=id2,male=id2,stringsAsFactors = F))
+      matings <- matings[matings$female >= matings$male,] 
     }
-    return(list(K=K, parents=parents[,setdiff(colnames(parents),c("add","dom"))], 
-                matings=matings))
-  } 
-}
+  }
+
+  stopifnot(nrow(matings) > 1)
+  matings$female <- as.character(matings$female)
+  matings$male <- as.character(matings$male)
+  id2 <- union(matings$female,matings$male)
+  stopifnot(id2 %in% parents$id)
+  parents <- parents[parents$id %in% id2,]
+  matings$merit <- (parents$add[match(matings$female,parents$id)] +
+                      parents$add[match(matings$male,parents$id)])/2
+    
+  if (dominance) {
+    matings$merit <- matings$merit + 
+                      (parents$dom[match(matings$female,parents$id)] +
+                       parents$dom[match(matings$male,parents$id)])/2
+    
+    mate.list <- split(as.matrix(matings[,1:2]),f=1:nrow(matings))
+    if (n.core > 1) {
+      cl <- makeCluster(n.core)
+      clusterExport(cl=cl,varlist=NULL)
+      ans <- parSapply(cl=cl,X=mate.list,MPH,ploidy=ploidy,geno=geno)
+      stopCluster(cl)
+    } else {
+      ans <- sapply(mate.list,MPH,ploidy=ploidy,geno=geno)
+      #ans[is.na(ans)] <- 0
+    }
+    matings$merit <- matings$merit + as.numeric(crossprod(ans,effects[,2]))
+  }
+  
+  if (standardize)
+    matings$merit <- (matings$merit-mean.merit)/sd.merit
+  
+  if (is.null(sex)) {
+    matings <- data.frame(parent1=matings$female, parent2=matings$male, 
+                          merit=matings$merit)
+  } else {
+    matings <- matings[,c("female","male","merit")]
+  }
+  return(list(K=K, parents=parents[,setdiff(colnames(parents),c("add","dom"))], 
+              matings=matings))
+} 
+
