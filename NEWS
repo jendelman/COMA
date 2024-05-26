@@ -1,3 +1,10 @@
+Changed in 0.15
+* Reformulated inbreeding constraints
+* Revised vignette dataset
+
+Changed in 0.14
+* Updated pedigree kinship matrix and renamed Kped.csv
+
 Changed in 0.13
 * Fixed error with "none"
 

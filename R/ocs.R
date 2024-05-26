@@ -32,6 +32,7 @@ ocs <- function(dF, parents, ploidy, K, min.c=0,
   stopifnot(c("id","merit","min","max") == colnames(parents)[1:4])
   stopifnot(parents$max <= 1)
   stopifnot(parents$min >= 0)
+  ploidy <- as.integer(ploidy)
   
   parents$id <- as.character(parents$id)
   constraints <- NULL
@@ -50,7 +51,7 @@ ocs <- function(dF, parents, ploidy, K, min.c=0,
   }
   
   Fi <- matrix((ploidy*diag(K)-1)/(ploidy-1),nrow=1)
-  F.avg <- mean(as.numeric(Fi))
+  Ft0 <- mean(as.numeric(Fi))
   n <- nrow(parents)
   
   oc <- data.frame(id=parents$id, value=numeric(n),check.names=F)
@@ -91,18 +92,18 @@ ocs <- function(dF, parents, ploidy, K, min.c=0,
     }
   }
   
-  dF1 <- dF
-  dFr <- merit <- as.numeric(NA)
+  merit <- as.numeric(NA)
   dF.best <- Inf
   flag <- TRUE
   
   while (flag) { 
-    RHS <- (ploidy-1)*(dF1+(1-dF1)*F.avg)
+    Ft1 <- dF+(1-dF)*Ft0
+    
     con2 <- c(con.list,
-             (ploidy/2)*quad_form(y,K) + (ploidy/2-1)*Fi%*%y <= RHS)
+              (ploidy/2)*quad_form(y,K) + (ploidy/2-1)*Fi%*%y <= (ploidy-1)*Ft1)
 
     problem <- Problem(objective,con2)
-    result <- solve(problem,solver="ECOS")
+    result <- suppressWarnings(solve(problem,solver=solver))
     if (result$status=="optimal") {
       y.opt <- as.numeric(result$getValue(y))
       ix <- which(y.opt < min.c)
@@ -118,39 +119,40 @@ ocs <- function(dF, parents, ploidy, K, min.c=0,
           y.f <- y.m <- y.opt
         }
         
-        F.t1 <- as.numeric((ploidy/2)*crossprod(y.f,K%*%y.m) + 
+        Ft1 <- as.numeric((ploidy/2)*crossprod(y.f,K%*%y.m) + 
                              (ploidy/2-1)*Fi%*%y.opt)/(ploidy-1)
-        dFr <- (F.t1-F.avg)/(1-F.avg)
-        
+        dFr <- (Ft1-Ft0)/(1-Ft0)
+
         if (dFr < dF.best) {
           oc$value <- y.opt
           merit <- result$value
           dF.best <- dFr
         }
       } 
+    } else {
+      dFr <- as.numeric(NA)
     } 
     
     if (is.null(dF.adapt)) {
       flag <- FALSE
     } else {
-      if ((!is.na(merit) & dFr <= dF1) | (dF1 > min(dF.adapt$max,dF.best+dF.adapt$step))) {
+      if ((!is.na(merit) & dFr <= dF + dF.adapt$step) | 
+          (dF + dF.adapt$step > dF.adapt$max)) {
         flag <- FALSE
       } else {
-        dF1 <- dF1 + dF.adapt$step
+        dF <- dF + dF.adapt$step
       }
     }
   }
   
   if (is.na(merit)) {
-    return(list(response=c(dF=as.numeric(NA), 
+    return(list(response=c(dF=as.numeric(NA),
                            merit=as.numeric(NA),
                            diversity=as.numeric(NA)), 
                 oc=oc[integer(0),]))
   } else {
     oc <- oc[which(oc$value > 0),,drop=FALSE]
     diversity <- -sum(oc$value*log(oc$value))
-    return(list(response=c(dF=dF.best, 
-                           merit=merit,
-                           diversity=diversity),oc=oc)) 
+    return(list(response=c(dF=dF.best,merit=merit,diversity=diversity),oc=oc)) 
   }
 }

@@ -17,7 +17,7 @@ opts_knit$set(root.dir="~/Box Sync/Endelman/Software/COMA")
 
 COMA requires two input files. The first file contains the marker effects and allele dosage data for the parental candidates. Dominance marker effects are optional, but when included should correspond to a breeding value parameterization, including the effect of heterosis/inbreeding depression [(Endelman 2023)](https://doi.org/10.1007/s00122-023-04298-x). The `blup` command in [R/StageWise](https://github.com/jendelman/StageWise) is one option to compute marker effects. 
 
-The vignette dataset comes from the University of Wisconsin potato breeding program. There are 93 tetraploid clones genotyped at nearly 15K markers, and the marker effects are derived from a multi-trait index.
+The vignette dataset comes from the University of Wisconsin potato breeding program. There are 170 tetraploid clones genotyped at 12K markers, and the marker effects are derived from a multi-trait index.
 
 ```{r}
 geno.file <- system.file("vignette_data", "geno.csv", package = "COMA")
@@ -25,10 +25,10 @@ geno <- read.csv(geno.file,check.names=F)
 geno[1:4,1:5]
 ```
 
-The second input file is the kinship matrix to control inbreeding. Kinship should be calculated based on the probability of IBD or IBS (not a G matrix). The vignette dataset is a pedigree-based, IBD kinship matrix for the 93 clones, estimated using R package [AGHmatrix](https://cran.r-project.org/web/packages/AGHmatrix/index.html).
+The second input file is the kinship matrix to control inbreeding. Based on simulation results (Endelman 2024), the pedigree IBD kinship matrix is recommended for either OCS or OMA. (Do not use the typical G matrix from genomic selection.) A pedigree IBD kinship matrix is provided for the potato clones, estimated using R package [AGHmatrix](https://cran.r-project.org/web/packages/AGHmatrix/index.html).
 
 ```{r,fig.width=4,fig.height=4}
-K.file <- system.file("vignette_data", "IBD.kinship.csv", package = "COMA")
+K.file <- system.file("vignette_data", "kinship.csv", package = "COMA")
 
 #preview files
 K <- as.matrix(read.csv(K.file,check.names=F,row.names=1))
@@ -54,7 +54,7 @@ As shown above, the `parents` output contains the predicted merit (GEBV) for eac
 
 ### OCS and OMA
 
-The `ocs` and `oma` functions are used to determine the optimal genetic contributions. Both require the argument `parents`, which must specify the minimum and maximum contributions. In this case we used min=0 and max=1 for all parents, but this can be tailored to each parent. For `oma`, the parental merits are not used, so this column is omitted. Rather, the merit of each mating is needed, along with its min and max. Common guidance in animal breeding is to target an inbreeding rate (dF) of 0.005 to 0.01, so we begin with those values.
+The `ocs` and `oma` functions are used to determine the optimal genetic contributions. Both require the argument `parents`, which must specify the minimum and maximum contributions. In this case we used min=0 and max=1 for all parents, but this can be tailored to each parent. For `oma`, the parental merits are not used, so this column is omitted. Rather, the merit of each mating is needed, along with its min and max. Based on simulation results and long-standing practice in animal breeding, rates of 0.005 to 0.01 are recommended.
 
 ```{r}
 parents <- data.frame(data$parents, min=0, max=1)

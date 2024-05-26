@@ -35,8 +35,9 @@ plot_ribbon <- function(oc, min.c=0.001) {
   if (m > 1) {
     ggplot(data=plot.data,aes(x=dF,y=value,fill=id)) + 
       scale_fill_viridis_d(name="") +
-      ylab("Contribution") + xlab("Inbreeding Rate") + 
-      geom_area(colour="white") +
+      ylab("Contribution") + 
+      geom_area(colour="white") + 
+      scale_x_continuous(breaks=dF,name = "Inbreeding Rate") + 
       scale_y_continuous(breaks=seq(0,1,by=0.1)) 
       
   } else {

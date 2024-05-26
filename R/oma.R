@@ -29,8 +29,8 @@
 #' @importFrom stats model.matrix
 #' @export
 #' 
-oma <- function(dF, parents, matings, ploidy, K, min.a=0, 
-                dF.adapt=NULL, solver="ECOS") {
+oma <- function(dF, parents, matings, ploidy, K,
+                min.a=0, dF.adapt=NULL, solver="ECOS") {
   
   stopifnot(c("id","min","max") == colnames(parents)[1:3])
   parents$id <- as.character(parents$id)
@@ -39,11 +39,12 @@ oma <- function(dF, parents, matings, ploidy, K, min.a=0,
   stopifnot(c("merit","min","max") == colnames(matings)[3:5])
   stopifnot(matings$max <= 1)
   stopifnot(matings$min >= 0)
-  
+  ploidy <- as.integer(ploidy)
+                       
   colnames(matings) <- c("female","male","merit","min","max")
   
   Fi <- matrix((ploidy*diag(K)-1)/(ploidy-1),nrow=1)
-  F.avg <- mean(as.numeric(Fi))
+  Ft0 <- mean(as.numeric(Fi))
   
   h.t <- matrix(matings$merit,nrow=1)
   parent.id <- sort(union(matings$female,matings$male))
@@ -57,14 +58,13 @@ oma <- function(dF, parents, matings, ploidy, K, min.a=0,
   matings$female <- factor(matings$female,levels=parent.id)
   matings$male <- factor(matings$male,levels=parent.id)
 
-  M1 <- model.matrix(~female-1,matings)
-  M2 <- model.matrix(~male-1,matings)
+  Lf <- model.matrix(~female-1,matings)
+  Lm <- model.matrix(~male-1,matings)
+  M <- t(Lf+Lm)/2
+  rownames(M) <- parent.id
   
   matings$female <- as.character(matings$female)
   matings$male <- as.character(matings$male)
-  
-  M <- t((M1+M2)/2)
-  rownames(M) <- parent.id
   
   oc <- data.frame(id=parents$id, value=numeric(n))
   om <- data.frame(matings[,1:2], value=numeric(p))
@@ -94,6 +94,7 @@ oma <- function(dF, parents, matings, ploidy, K, min.a=0,
   }
   con.list <- list(y <= parents$max, y >= parents$min, y==M%*%x, 
                    x <= matings$max, x >= matings$min, sum(x)==1)
+  
   if (sexed)
     con.list <- c(con.list, sum(parents$female*y)==0.5)
   if (!is.null(constraints)) {
@@ -122,22 +123,21 @@ oma <- function(dF, parents, matings, ploidy, K, min.a=0,
     }
   }
   
-  dF1 <- dF
-  dFr <- merit <- as.numeric(NA)
+  merit <- as.numeric(NA)
   dF.best <- Inf
   flag <- TRUE
-  theta1 <- ploidy*(3*ploidy/4-1)
+  
   while (flag) {
-    theta2 <- (ploidy/2-1)*(dF1*(ploidy-1)-ploidy/2)
-    theta3 <- ploidy/2*(ploidy-1)*(1-dF1)
-    RHS1 <- (ploidy-1)*(dF1+(1-dF1)*F.avg)
-    RHS2 <- (ploidy-1)^2*dF1
+    Ft1 <- dF+(1-dF)*Ft0
+    Ft2 <- dF*(2-dF)+(1-dF)^2*Ft0
+    
     con2 <- c(con.list, 
-      list((ploidy/2)*Kvec%*%x + (ploidy/2-1)*Fi%*%y <= RHS1,
-           theta1*quad_form(y,K) + theta2*Fi%*%y - theta3*Kvec%*%x <= RHS2))
+      list((ploidy/2)*Kvec%*%x + (ploidy/2-1)*Fi%*%y <= (ploidy-1)*Ft1,
+           (ploidy/2)*(ploidy-1)*quad_form(y,K) + 
+             (ploidy/2-1)*((ploidy/2-1)*Fi%*%y + ploidy/2*Kvec%*%x) <= (ploidy-1)^2*Ft2))
     
     problem <- Problem(objective,con2)
-    result <- solve(problem,solver="ECOS")
+    result <- suppressWarnings(solve(problem,solver=solver))
     if (result$status=="optimal") {
       x.opt <- as.numeric(result$getValue(x))
       ix <- which(x.opt < min.a)
@@ -147,28 +147,32 @@ oma <- function(dF, parents, matings, ploidy, K, min.a=0,
         x.opt <- x.opt/sum(x.opt)
         y.opt <- as.numeric(M%*%x.opt)
         
-        F.t1 <- as.numeric((ploidy/2)*Kvec%*%x.opt + (ploidy/2-1)*Fi%*%y.opt)/(ploidy-1)
-        dFr <- (F.t1-F.avg)/(1-F.avg)
+        Ft1 <- as.numeric((ploidy/2)*Kvec%*%x.opt + (ploidy/2-1)*Fi%*%y.opt)/(ploidy-1)
+        dFr <- (Ft1-Ft0)/(1-Ft0)
         
-        F.t2 <- as.numeric(theta1*crossprod(y.opt,K%*%y.opt) + (ploidy/2-1)^2*Fi%*%y.opt)/(ploidy-1)^2
-        dF2r <- (F.t2-F.t1)/(1-F.t1)
         if (dFr < dF.best) {
           oc$value <- y.opt
           om$value <- x.opt
           merit <- result$value
           dF.best <- dFr
-          dF2.best <- dF2r
+          Ft2 <- ((ploidy/2)*(ploidy-1)*crossprod(y.opt,K%*%y.opt) + 
+                    (ploidy/2-1)*((ploidy/2-1)*Fi%*%y.opt + 
+                                    ploidy/2*Kvec%*%x.opt))/(ploidy-1)^2
+          dF2 <- sqrt(1+(as.numeric(Ft2)-Ft0)/(1-Ft0)) - 1
         }
       }
+    } else {
+      dFr <- as.numeric(NA)
     }
     
     if (is.null(dF.adapt)) {
       flag <- FALSE
     } else {
-      if ((!is.na(merit) & dFr <= dF1) | (dF1 > min(dF.adapt$max,dF.best+dF.adapt$step))) {
+      if ((!is.na(merit) & dFr <= dF + dF.adapt$step) | 
+          (dF + dF.adapt$step > dF.adapt$max)) {
         flag <- FALSE
       } else {
-        dF1 <- dF1 + dF.adapt$step
+        dF <- dF + dF.adapt$step
       }
     }
   }
@@ -177,15 +181,16 @@ oma <- function(dF, parents, matings, ploidy, K, min.a=0,
     colnames(om) <- replace(colnames(om),1:2,c("parent1","parent2"))
   
   if (is.na(merit)) {
-    return(list(response=c(dF=as.numeric(NA), merit=as.numeric(NA), diversity=as.numeric(NA)), 
-                oc=oc[integer(0),], om=om[integer(0),]))
+    return(list(response=c(dF1=as.numeric(NA),dF2=as.numeric(NA),
+                           merit=as.numeric(NA),
+                           diversity=as.numeric(NA)),
+                oc=oc[integer(0),],om=om[integer(0),]))
   } else {
     oc <- oc[which(oc$value > 0),,drop=FALSE]
     om <- om[which(om$value > 0),,drop=FALSE]
     diversity <- -sum(oc$value*log(oc$value))
-    return(list(response=c(dF1=dF.best, 
-                           dF2=dF2.best,
-                           merit=merit,
-                           diversity=diversity),oc=oc,om=om)) 
+    return(list(response=c(dF1=dF.best,dF2=dF2,merit=merit,
+                           diversity=diversity),
+                oc=oc,om=om)) 
   }
 }
