@@ -138,7 +138,9 @@ oma <- function(dF, parents, matings, ploidy, K,
     
     problem <- Problem(objective,con2)
     result <- suppressWarnings(solve(problem,solver=solver))
-    if (result$status=="optimal") {
+    if (result$status %in% c("optimal","optimal_inaccurate")) {
+      if (result$status=="optimal_inaccurate")
+        warning("Optimal inaccurate solution")
       x.opt <- as.numeric(result$getValue(x))
       ix <- which(x.opt < min.a)
       if (length(ix) > 0)
