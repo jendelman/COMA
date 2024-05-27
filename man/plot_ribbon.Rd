@@ -7,9 +7,9 @@
 plot_ribbon(oc, min.c = 0.001)
 }
 \arguments{
-\item{oc}{named list of optimal contributions/allocations}
+\item{oc}{named list of optimal contributions}
 
-\item{min.c}{minimum contribution/allocation for plotting}
+\item{min.c}{minimum contribution for plotting}
 }
 \value{
 ggplot2 object

@@ -4,8 +4,8 @@
 #' 
 #' The inbreeding rates are taken from the names of \code{oc}. Each element of \code{oc} should be a data frame with columns "id" and "value".
 #' 
-#' @param oc named list of optimal contributions/allocations
-#' @param min.c minimum contribution/allocation for plotting
+#' @param oc named list of optimal contributions
+#' @param min.c minimum contribution for plotting
 #' 
 #' @return ggplot2 object
 #' 
