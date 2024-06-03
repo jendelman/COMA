@@ -104,7 +104,9 @@ ocs <- function(dF, parents, ploidy, K, min.c=0,
 
     problem <- Problem(objective,con2)
     result <- suppressWarnings(solve(problem,solver=solver))
-    if (result$status=="optimal") {
+    if (result$status %in% c("optimal","optimal_inaccurate")) {
+      if (result$status=="optimal_inaccurate")
+        warning("Optimal inaccurate solution")
       y.opt <- as.numeric(result$getValue(y))
       ix <- which(y.opt < min.c)
       if (length(ix) > 0)

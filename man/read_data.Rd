@@ -45,5 +45,5 @@ The first column of \code{geno.file} is the marker name. The second column conta
 
 The \code{kinship.file} should contain an N x N kinship matrix with id names in the first column and row.
 
-There are several options for argument \code{matings}: (1) "none" = no matings; (2) "all" = all possible matings of the individuals in \code{geno.file} (excluding reciprocals); (3) a character vector of genotype ids to calculate all pairs of matings; (4) a 2-column data.frame of desired matings with header "female","male" for dioecious species or else "parent1","parent2". Self-matings are included under options (2) and (3) but can be easily removed in the output.
+There are several options for argument \code{matings}: (1) "none" = no matings; (2) "all" = all possible matings of the individuals in \code{geno.file} (excluding reciprocals); (3) a character vector of genotype ids to calculate all pairs of matings; (4) a 2-column data.frame of desired matings with header "female","male" for dioecious species (separate sexes) or "parent1","parent2" for hermaphrodites. Self-matings are included under options (2) and (3) for dioecious species but are easily removed in the output if desired.
 }
