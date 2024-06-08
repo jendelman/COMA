@@ -10,7 +10,7 @@ oma(
   matings,
   ploidy,
   K,
-  min.a = 0,
+  tol = 1e-06,
   dF.adapt = NULL,
   solver = "ECOS"
 )
@@ -26,7 +26,7 @@ oma(
 
 \item{K}{kinship matrix}
 
-\item{min.a}{minimum allocation}
+\item{tol}{tolerance, values below this set to 0}
 
 \item{dF.adapt}{see Details}
 
@@ -35,7 +35,7 @@ oma(
 \value{
 list containing
 \describe{
-\item{response}{named vector with realized dF, merit, Shannon diversity for parents}
+\item{response}{data.frame with realized dF, merit, n.parent, n.mate}
 \item{oc}{data frame of optimal contributions for each individual}
 \item{om}{data frame of optimal allocations for each mating}
 }
@@ -50,5 +50,5 @@ The data.frame \code{matings} has five columns: "female, male, merit, min, max" 
 
 The average inbreeding coefficient of the current generation is based on all individuals in \code{K}, which may exceed the list of individuals in \code{parents}.
 
-After optimization, allocations less than \code{min.a} are set equal to zero, and the remainder are renormalized. The realized inbreeding rate can exceed the specified limit after applying this threshold. It is also possible that no feasible solution exists for the specified \code{dF}. In either case, argument \code{dF.adapt} can be used to find other solutions. It is a list with two named components: step, max. The software increases the dF limit by dF.adapt$step up to the smaller of dF.adapt$max or the realized value under the original dF, in an attempt to find a solution with less inbreeding.
+It is possible that no feasible solution exists for the specified \code{dF}. Argument \code{dF.adapt} can be used to automatically progressively higher values.The software increases the dF limit by dF.adapt$step up to the smaller of dF.adapt$max or the realized value under the original dF, in an attempt to find a solution with less inbreeding.
 }

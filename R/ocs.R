@@ -8,25 +8,25 @@
 #' 
 #' The average inbreeding coefficient of the current generation is based on all individuals in \code{K}, which may exceed the list of individuals in \code{parents}.
 #' 
-#' After optimization, contributions less than \code{min.c} are set equal to zero, and the remainder are renormalized. The realized inbreeding rate can exceed the specified limit after applying this threshold. It is also possible that no feasible solution exists for the specified \code{dF}. In either case, argument \code{dF.adapt} can be used to find other solutions. It is a list with two named components: step, max. The software increases the dF limit by dF.adapt$step up to the smaller of dF.adapt$max or the realized value under the original dF, in an attempt to find a solution with less inbreeding. 
+#' It is possible that no feasible solution exists for the specified \code{dF}. Argument \code{dF.adapt} can be used to automatically progressively higher values.The software increases the dF limit by dF.adapt$step up to the smaller of dF.adapt$max or the realized value under the original dF, in an attempt to find a solution with less inbreeding. 
 #' 
 #' @param dF inbreeding rate 
 #' @param parents input data frame (see Details)
 #' @param ploidy ploidy
 #' @param K kinship matrix 
-#' @param min.c minimum contribution
+#' @param tol tolerance, values below this set to 0
 #' @param dF.adapt see Details
 #' @param solver solver for CVXR (default is "ECOS")
 #' 
 #' @return list containing
 #' \describe{
-#' \item{response}{named vector with realized dF, merit, Shannon diversity for parents}
+#' \item{response}{data.frame with realized dF, merit, n.parent}
 #' \item{oc}{data frame of optimal contributions}
 #' }
 #' @import CVXR
 #' @export
 #' 
-ocs <- function(dF, parents, ploidy, K, min.c=0, 
+ocs <- function(dF, parents, ploidy, K, tol=1e-6, 
                 dF.adapt=NULL, solver="ECOS") {
   
   stopifnot(c("id","merit","min","max") == colnames(parents)[1:4])
@@ -92,11 +92,8 @@ ocs <- function(dF, parents, ploidy, K, min.c=0,
     }
   }
   
-  merit <- as.numeric(NA)
-  dF.best <- Inf
-  flag <- TRUE
-  
-  while (flag) { 
+  done <- FALSE
+  while (!done) { 
     Ft1 <- dF+(1-dF)*Ft0
     
     con2 <- c(con.list,
@@ -105,56 +102,47 @@ ocs <- function(dF, parents, ploidy, K, min.c=0,
     problem <- Problem(objective,con2)
     result <- suppressWarnings(solve(problem,solver=solver))
     if (result$status %in% c("optimal","optimal_inaccurate")) {
-      if (result$status=="optimal_inaccurate")
-        warning("Optimal inaccurate solution")
-      y.opt <- as.numeric(result$getValue(y))
-      ix <- which(y.opt < min.c)
-      if (length(ix) > 0)
-        y.opt[ix] <- 0
-      if (sum(y.opt) > 0) {
-        y.opt <- y.opt/sum(y.opt)
-        
-        if (sexed) {
-          y.f <- parents$female*y.opt
-          y.m <- (1-parents$female)*y.opt
-        } else {
-          y.f <- y.m <- y.opt
-        }
-        
-        Ft1 <- as.numeric((ploidy/2)*crossprod(y.f,K%*%y.m) + 
-                             (ploidy/2-1)*Fi%*%y.opt)/(ploidy-1)
-        dFr <- (Ft1-Ft0)/(1-Ft0)
-
-        if (dFr < dF.best) {
-          oc$value <- y.opt
-          merit <- result$value
-          dF.best <- dFr
-        }
-      } 
+      done <- TRUE
     } else {
-      dFr <- as.numeric(NA)
-    } 
-    
-    if (is.null(dF.adapt)) {
-      flag <- FALSE
-    } else {
-      if ((!is.na(merit) & dFr <= dF + dF.adapt$step) | 
-          (dF + dF.adapt$step > dF.adapt$max)) {
-        flag <- FALSE
+      if (is.null(dF.adapt)) {
+        done <- TRUE
       } else {
         dF <- dF + dF.adapt$step
+        if (dF > dF.adapt$max)
+          done <- TRUE
       }
     }
   }
   
-  if (is.na(merit)) {
-    return(list(response=c(dF=as.numeric(NA),
-                           merit=as.numeric(NA),
-                           diversity=as.numeric(NA)), 
-                oc=oc[integer(0),]))
+  if (result$status %in% c("optimal","optimal_inaccurate")) {
+    if (result$status=="optimal_inaccurate")
+      warning("Optimal inaccurate solution")
+    
+    y.opt <- as.numeric(result$getValue(y))
+    y.opt[y.opt < tol] <- 0
+    y.opt <- y.opt/sum(y.opt)
+    
+    if (sexed) {
+      y.f <- parents$female*y.opt
+      y.m <- (1-parents$female)*y.opt
+    } else {
+      y.f <- y.m <- y.opt
+    }
+        
+    Ft1 <- as.numeric((ploidy/2)*crossprod(y.f,K%*%y.m) + 
+                         (ploidy/2-1)*Fi%*%y.opt)/(ploidy-1)
+    dF1 <- (Ft1-Ft0)/(1-Ft0)
+
+    oc$value <- y.opt
+    oc <- oc[which(oc$value >= tol),,drop=FALSE]
+    #diversity <- -sum(oc$value*log(oc$value))
+    return(list(response=data.frame(dF=round(dF1,4), 
+                           merit=result$value,
+                           n.parent=nrow(oc)),oc=oc)) 
   } else {
-    oc <- oc[which(oc$value > 0),,drop=FALSE]
-    diversity <- -sum(oc$value*log(oc$value))
-    return(list(response=c(dF=dF.best,merit=merit,diversity=diversity),oc=oc)) 
+    return(list(response=data.frame(dF=as.numeric(NA),
+                           merit=as.numeric(NA),
+                           n.parent=0L),
+                oc=oc[integer(0),]))
   }
 }

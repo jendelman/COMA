@@ -59,66 +59,52 @@ The `ocs` and `oma` functions are used to determine the optimal genetic contribu
 
 ```{r}
 parents <- data.frame(data$parents, min=0, max=1)
+dF <- 0.005*(1:4)
 
-ocs1 <- ocs(dF=0.005, parents=parents, ploidy=4, K=data$K)
-ocs2 <- ocs(dF=0.010, parents=parents, ploidy=4, K=data$K)
-ocs3 <- ocs(dF=0.015, parents=parents, ploidy=4, K=data$K)
-kable(rbind(ocs1$response, ocs2$response, ocs3$response),digits=3)
+ocs.ans <- list(4)
+ocs.response <- NULL
+for (i in 1:4) {
+  ocs.ans[[i]] <- ocs(dF=dF[i], parents=parents, ploidy=4, K=data$K)
+  ocs.response <- rbind(ocs.response,ocs.ans[[i]]$response)
+}
+kable(ocs.response,digits=3)
 
 matings <- data.frame(data$matings, min=0, max=1)
+oma.ans <- list(4)
+oma.response <- NULL
+for (i in 1:4) {
+  oma.ans[[i]] <- oma(dF=dF[i], parents=parents[,-2], matings=matings,
+                      ploidy=4, K=data$K)
+  oma.response <- rbind(oma.response,oma.ans[[i]]$response)
+}
+kable(oma.response,digits=3)
 
-oma1 <- oma(dF=0.005, parents=parents[,-2], matings=matings, ploidy=4, K=data$K)
-oma2 <- oma(dF=0.010, parents=parents[,-2], matings=matings, ploidy=4, K=data$K)
-oma3 <- oma(dF=0.015, parents=parents[,-2], matings=matings, ploidy=4, K=data$K)
-kable(rbind(oma1$response, oma2$response, oma3$response), digits=3)
 ```
 
-The above results show the predicted merit and Shannon diversity for the optimized parental contributions. The predicted merit for OMA includes heterosis while OCS does not. For both methods, higher inbreeding leads to higher merit and lower diversity, which is an expected trade-off. 
+Because genetic merit is a linear function of the contribution/allocation variables, the optimal solution lies on the boundary of the domain. This results in *sparse* solutions where many variables are zero. The number of parents and matings with nonzero contribution are returned by the function, along with the genetic merit of the optimal solution. Because mid-parent heterosis is modeled with OMA but not OCS, the predicted merit is more accurate with OMA.
 
-The dF values in the output are the realized inbreeding rates, which can exceed the target due to thresholding (see below). The `oma` function returns two rates, dF1 and dF2. dF1 is the inbreeding rate for the next generation, and dF2 is the effective inbreeding rate over two generations if random mating were to occur among the progeny. This constraint is analogous to the group coancestry constraint in OCS (Endelman 2024). As the example shows, dF2 is typically at the limit while dF1 is not. 
+Note the superiority of the OMA solution over OCS at the same value of dF: higher gains are achieved with simpler mating plans, which is particularly advantageous when matings require human intervention (i.e., when open-pollination is not feasible).
 
-Now let's examine the optimum contributions, which are returned as `oc` for the parental contributions in both functions. The optimal mate allocations are returned as `om` by `oma`.
+As the inbreeding rate increased, the complexity of the mating plan decreased (i.e., fewer parents and matings). The `ocs` function returns a single realized inbreeding rate, which corresponds to the next generation. The `oma` function returns two values of dF: dF1 is the rate for the progeny under the optimized allocation, while dF2 would be the rate if grand-progeny were produced under random mating of the progeny. The constraint on dF2 is analogous to the group coancestry constraint of OCS (Endelman 2024) and typically active (i.e., dF2 is at the limit), while dF1 is not at the limit.  
 
-```{r}
-kable(oma2$oc[1:5,], digits=3)
-kable(oma2$om[1:5,], digits=3)
-```
-
-Many contributions/allocations are very small (rounding to 0.000). In practice, there will be some minimum contribution/allocation that a breeding program can realize. For example, in the UW-Madison potato breeding program, approximately 20,000 progeny seedlings are generated per year per product profile. We like to work with at least 100 offspring per family, which corresponds to a minimum mate allocation of 100/20,000 = 0.5%. These practical constraints are enforced after the optimization by setting all values below the minimum to zero, which can generate realized inbreeding rates above the target. The following code illustrates the `min.a` parameter for `oma` (corresponding paramter is `min.c` for `ocs`).
-
-```{r}
-oma2b <- oma(dF=0.01, parents=parents[,-2], matings=matings, ploidy=4, 
-             K=data$K, min.a=0.005)
-oma2b$response
-kable(oma2b$om[1:5,],digits=3)
-```
-
-Here is code to quickly explore a range of inbreeding rates, using the `lapply` command:
-
-```{r}
-dF <- seq(1,2.5,by=0.5)/100
-ans <- lapply(as.list(dF), oma, parents=parents[,-2], matings=matings, 
-              ploidy=4, K=data$K, min.a=0.005)
-response <- t(sapply(ans,"[[",1))
-kable(response, digits=3)
-```
-
-The `plot_ribbon` command produces ribbon plots of the optimal contributions or allocations. 
+The optimal parental contributions are returned as `oc`, and optimal mate allocations are returned as `om`. The command `plot_ribbon` can be used to visualize the solution over multiple inbreeding rates.
 
 ```{r,fig.width=5,fig.height=4}
-oc <- lapply(ans,"[[",'oc')
-names(oc) <- dF
-plot_ribbon(oc)
+library(ggplot2)
+oc <- lapply(oma.ans[2:4],"[[",'oc')
+names(oc) <- dF[2:4]
+plot_ribbon(oc) + theme(legend.text=element_text(size=6))
 ```
 
 ```{r,fig.width=6,fig.height=4}
 library(ggplot2)
 f <- function(z){data.frame(id=apply(z$om[,1:2],1,paste,collapse="/"),
                             value=z$om$value)}
-om <- lapply(ans,f)
-names(om) <- dF
+om <- lapply(oma.ans[2:4],f)
+names(om) <- dF[2:4]
 plot_ribbon(om) + ylab("Allocation") + 
-  theme(axis.text.x = element_text(angle=90,vjust=0.5))
+  theme(axis.text.x = element_text(angle=90,vjust=0.5)) +
+  theme(legend.text=element_text(size=6))
 ```
 
 ### Other Constraints
@@ -134,29 +120,31 @@ par.file <- system.file("vignette_data", "parents.csv",
 data2 <- read.csv(par.file)
 PVYR.id <- data2$id[data2$PVYR=="Y"]
 
-#constraint method 1
-con1 <- oma(dF=0.01, ploidy=4L, K=data$K, min.a=0.005,
-            parents=parents[,-2], 
-            matings=filter(matings, parent1%in%PVYR.id | parent2%in%PVYR.id))
+#original solution at dF=0.01
+ans0 <- oma.ans[[2]]
 
 #calculate proportion of matings with PVYR parent from previous solution
-n.mate <- nrow(ans[[1]]$om)
-nR <- sum(ans[[1]]$om$parent1 %in% PVYR.id | ans[[1]]$om$parent2 %in% PVYR.id)
+n.mate <- ans0$response$n.mate
+nR <- sum(ans0$om$parent1 %in% PVYR.id | ans0$om$parent2 %in% PVYR.id)
+
+#constraint method 1
+ans1 <- oma(dF=0.01, ploidy=4L, K=data$K, parents=parents[,-2], 
+            matings=filter(matings, parent1%in%PVYR.id | parent2%in%PVYR.id))
 
 #calculate frequency of PVYR gene, assuming single copy in parents
-Ry.freq <- ifelse(ans[[1]]$oc$id %in% PVYR.id, 0.25, 0)
-freq0 <- sum(ans[[1]]$oc$value * Ry.freq)
-Ry.freq <- ifelse(con1$oc$id %in% PVYR.id, 0.25, 0)
-freq1 <- sum(con1$oc$value * Ry.freq)
+Ry.freq <- ifelse(ans0$oc$id %in% PVYR.id, 0.25, 0)
+freq0 <- sum(ans0$oc$value * Ry.freq)
+Ry.freq <- ifelse(ans1$oc$id %in% PVYR.id, 0.25, 0)
+freq1 <- sum(ans1$oc$value * Ry.freq)
 
 result <- data.frame(constraint=c("none","method 1"),
-                     rbind(ans[[1]]$response,con1$response),
+                     rbind(ans0$response,ans1$response),
                      prop.resistant.matings=c(nR/n.mate,1),
                      Ry.freq=c(freq0,freq1))
 kable(result,digits=3)
 ```
 
-The above table compares the solution with and without the PVYR constraint. As expected, increasing the proportion of PVYR matings from 41% to 100% reduced the predicted merit. The frequency of the R gene in the progeny is also shown, assuming a single copy in the resistant parents. When 100% of the matings have 1 PVYR parent, the gene frequency is 1/8 = 0.125.
+The above table compares the solution with and without the PVYR constraint. As expected, increasing the proportion of PVYR matings to 100% reduced the predicted merit. The frequency of the R gene in the progeny is also shown, assuming a single copy in the resistant parents. When all matings have 1 PVYR parent, the gene frequency is 1/8 = 0.125.
 
 Under method 2, the R gene frequency is constrained directly, which is less restrictive than method 1 because some matings could have two PVYR parents while others have none. Both `ocs` and `oma` allow linear inequality or equality constraints on any linear combination of the parental contributions. When the coefficients, $\mathbf{s}$, of the contribution variables, $\mathbf{y}$, are the R gene frequencies of each parent, this creates the desired constraint. The coefficients are included as an additional column in the `parents` data.frame, and the column header is parsed to complete the equation. In this case, the header "gt0.125" represents greater than or equal to 0.125:
 $$ \mathbf{s}^\prime \mathbf{y} \ge 0.125$$
@@ -165,14 +153,14 @@ $$ \mathbf{s}^\prime \mathbf{y} \ge 0.125$$
 parents2 <- data.frame(parents,
                        gt0.125=ifelse(parents$id %in% PVYR.id, 0.25, 0))
 
-con2 <- oma(dF=0.01, ploidy=4L, K=data$K, min.a=0.005,
-            parents=parents2[,-2], matings=matings)
+ans2 <- oma(dF=0.01, ploidy=4L, K=data$K, parents=parents2[,-2], 
+            matings=matings)
 
-Ry.freq <- ifelse(con2$oc$id %in% PVYR.id, 0.25, 0)
-freq2 <- sum(con2$oc$value * Ry.freq)
+Ry.freq <- ifelse(ans2$oc$id %in% PVYR.id, 0.25, 0)
+freq2 <- sum(ans2$oc$value * Ry.freq)
 
 result <- data.frame(constraint=c("none","method 1","method 2"),
-                     rbind(ans[[1]]$response,con1$response,con2$response),
+                     rbind(ans0$response,ans1$response,ans2$response),
                      Ry.freq=c(freq0,freq1,freq2))
 kable(result,digits=3)
 ```

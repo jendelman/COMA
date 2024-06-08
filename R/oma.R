@@ -8,20 +8,20 @@
 #' 
 #' The average inbreeding coefficient of the current generation is based on all individuals in \code{K}, which may exceed the list of individuals in \code{parents}.
 #'
-#' After optimization, allocations less than \code{min.a} are set equal to zero, and the remainder are renormalized. The realized inbreeding rate can exceed the specified limit after applying this threshold. It is also possible that no feasible solution exists for the specified \code{dF}. In either case, argument \code{dF.adapt} can be used to find other solutions. It is a list with two named components: step, max. The software increases the dF limit by dF.adapt$step up to the smaller of dF.adapt$max or the realized value under the original dF, in an attempt to find a solution with less inbreeding. 
+#' It is possible that no feasible solution exists for the specified \code{dF}. Argument \code{dF.adapt} can be used to automatically progressively higher values.The software increases the dF limit by dF.adapt$step up to the smaller of dF.adapt$max or the realized value under the original dF, in an attempt to find a solution with less inbreeding. 
 #'
 #' @param dF inbreeding rate
 #' @param parents parents data frame (see Details)
 #' @param matings matings data frame (see Details)
 #' @param ploidy ploidy
 #' @param K kinship matrix 
-#' @param min.a minimum allocation
+#' @param tol tolerance, values below this set to 0
 #' @param dF.adapt see Details
 #' @param solver solver for CVXR (default is "ECOS")
 #' 
 #' @return list containing
 #' \describe{
-#' \item{response}{named vector with realized dF, merit, Shannon diversity for parents}
+#' \item{response}{data.frame with realized dF, merit, n.parent, n.mate}
 #' \item{oc}{data frame of optimal contributions for each individual}
 #' \item{om}{data frame of optimal allocations for each mating}
 #' }
@@ -30,7 +30,7 @@
 #' @export
 #' 
 oma <- function(dF, parents, matings, ploidy, K,
-                min.a=0, dF.adapt=NULL, solver="ECOS") {
+                tol=1e-6, dF.adapt=NULL, solver="ECOS") {
   
   stopifnot(c("id","min","max") == colnames(parents)[1:3])
   parents$id <- as.character(parents$id)
@@ -123,11 +123,8 @@ oma <- function(dF, parents, matings, ploidy, K,
     }
   }
   
-  merit <- as.numeric(NA)
-  dF.best <- Inf
-  flag <- TRUE
-  
-  while (flag) {
+  done <- FALSE
+  while (!done) {
     Ft1 <- dF+(1-dF)*Ft0
     Ft2 <- dF*(2-dF)+(1-dF)^2*Ft0
     
@@ -139,60 +136,53 @@ oma <- function(dF, parents, matings, ploidy, K,
     problem <- Problem(objective,con2)
     result <- suppressWarnings(solve(problem,solver=solver))
     if (result$status %in% c("optimal","optimal_inaccurate")) {
-      if (result$status=="optimal_inaccurate")
-        warning("Optimal inaccurate solution")
-      x.opt <- as.numeric(result$getValue(x))
-      ix <- which(x.opt < min.a)
-      if (length(ix) > 0)
-        x.opt[ix] <- 0
-      if (sum(x.opt) > 0) {
-        x.opt <- x.opt/sum(x.opt)
-        y.opt <- as.numeric(M%*%x.opt)
-        
-        Ft1 <- as.numeric((ploidy/2)*Kvec%*%x.opt + (ploidy/2-1)*Fi%*%y.opt)/(ploidy-1)
-        dFr <- (Ft1-Ft0)/(1-Ft0)
-        
-        if (dFr < dF.best) {
-          oc$value <- y.opt
-          om$value <- x.opt
-          merit <- result$value
-          dF.best <- dFr
-          Ft2 <- ((ploidy/2)*(ploidy-1)*crossprod(y.opt,K%*%y.opt) + 
-                    (ploidy/2-1)*((ploidy/2-1)*Fi%*%y.opt + 
-                                    ploidy/2*Kvec%*%x.opt))/(ploidy-1)^2
-          dF2 <- sqrt(1+(as.numeric(Ft2)-Ft0)/(1-Ft0)) - 1
-        }
-      }
+      done <- TRUE
     } else {
-      dFr <- as.numeric(NA)
-    }
-    
-    if (is.null(dF.adapt)) {
-      flag <- FALSE
-    } else {
-      if ((!is.na(merit) & dFr <= dF + dF.adapt$step) | 
-          (dF + dF.adapt$step > dF.adapt$max)) {
-        flag <- FALSE
+      if (is.null(dF.adapt)) {
+        done <- TRUE
       } else {
         dF <- dF + dF.adapt$step
+        if (dF > dF.adapt$max)
+          done <- TRUE
       }
     }
   }
   
-  if (!sexed)
-    colnames(om) <- replace(colnames(om),1:2,c("parent1","parent2"))
+  if (result$status %in% c("optimal","optimal_inaccurate")) {
+    if (result$status=="optimal_inaccurate")
+      warning("Optimal inaccurate solution")
+      
+    x.opt <- as.numeric(result$getValue(x))
+    x.opt[x.opt < tol] <- 0
+    x.opt <- x.opt/sum(x.opt)
   
-  if (is.na(merit)) {
-    return(list(response=c(dF1=as.numeric(NA),dF2=as.numeric(NA),
-                           merit=as.numeric(NA),
-                           diversity=as.numeric(NA)),
-                oc=oc[integer(0),],om=om[integer(0),]))
+    y.opt <- as.numeric(M%*%x.opt)
+    Ft1 <- as.numeric((ploidy/2)*Kvec%*%x.opt + (ploidy/2-1)*Fi%*%y.opt)/(ploidy-1)
+    dF1 <- (Ft1-Ft0)/(1-Ft0)
+    Ft2 <- ((ploidy/2)*(ploidy-1)*crossprod(y.opt,K%*%y.opt) + 
+              (ploidy/2-1)*((ploidy/2-1)*Fi%*%y.opt + 
+                              ploidy/2*Kvec%*%x.opt))/(ploidy-1)^2
+    dF2 <- sqrt(1+(as.numeric(Ft2)-Ft0)/(1-Ft0)) - 1
+    
+    oc$value <- y.opt
+    om$value <- x.opt
+  
+    om <- om[om$value >= tol,,drop=FALSE]
+    oc <- oc[oc$id %in% union(om$female,om$male),,drop=FALSE]
+    
+    if (!sexed)
+      colnames(om) <- replace(colnames(om),1:2,c("parent1","parent2"))
+    
+    #diversity <- -sum(oc$value*log(oc$value))
+    return(list(response=data.frame(dF1=round(dF1,4),
+                           dF2=round(dF2,4), 
+                           merit=result$value,
+                           n.parent=nrow(oc),
+                           n.mate=nrow(om)),oc=oc,om=om)) 
   } else {
-    oc <- oc[which(oc$value > 0),,drop=FALSE]
-    om <- om[which(om$value > 0),,drop=FALSE]
-    diversity <- -sum(oc$value*log(oc$value))
-    return(list(response=c(dF1=dF.best,dF2=dF2,merit=merit,
-                           diversity=diversity),
-                oc=oc,om=om)) 
+    return(list(response=data.frame(dF1=as.numeric(NA),dF2=as.numeric(NA),
+                           merit=as.numeric(NA),
+                           n.parent=0L, n.mate=0L),
+                oc=oc[integer(0),],om=om[integer(0),]))
   }
 }

@@ -1,3 +1,7 @@
+Changed in 0.16
+* changed min.a and min.c to tol, with 1e-6 default
+* replaced Shannon diversity with n.parent, n.mate in response table
+
 Changed in 0.15
 * Reformulated inbreeding constraints
 * Revised vignette dataset
