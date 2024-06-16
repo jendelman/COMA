@@ -162,7 +162,8 @@ oma <- function(dF, parents, matings, ploidy, K,
     Ft2 <- ((ploidy/2)*(ploidy-1)*crossprod(y.opt,K%*%y.opt) + 
               (ploidy/2-1)*((ploidy/2-1)*Fi%*%y.opt + 
                               ploidy/2*Kvec%*%x.opt))/(ploidy-1)^2
-    dF2 <- sqrt(1+(as.numeric(Ft2)-Ft0)/(1-Ft0)) - 1
+    Ft2 <- as.numeric(Ft2)
+    dF2 <- 1-sqrt((1-Ft2)/(1-Ft0))
     
     oc$value <- y.opt
     om$value <- x.opt
