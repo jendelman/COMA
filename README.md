@@ -2,18 +2,17 @@ R/COMA
 ================
 Jeffrey Endelman
 
-Plant and animal breeders have long appreciated the need to balance
-selection for short-term genetic gain with maintaining genetic variance
-for long-term gain. The COMA package implements selection strategies
-known as Optimal Contribution Selection (OCS) and Optimal Mate
-Allocation (OMA) in the animal breeding literature. In both cases, the
-optimal strategy maximizes the genetic merit of the F1 progeny while
-restricting the inbreeding rate and potentially other constraints. In
-OCS, the decision variables are the genetic contributions of the
-parents, but a specific mating plan is not developed– the objective
-function assumes random mating. In OMA, the contribution (i.e.,
-allocation) of each mating is also specified. The “C” in COMA stands for
-Convex because the software exploits the convex nature of the problem to
+Breeders have long appreciated the need to balance selection for
+short-term genetic gain with maintaining genetic variance for long-term
+gain. The COMA package implements selection strategies known as Optimal
+Contribution Selection (OCS) and Optimal Mate Allocation (OMA). OCS
+maximizes the average genomic-estimated breeding value (GEBV) of the
+parents, weighted by their contribution to the next generation. OMA
+maximizes the average genomic prediction of mate performance (GPMP),
+weighted by the contribution of each mating, which is called mate
+allocation. Constraints on inbreeding rate are used to ensure genetic
+variance is not depleted too quickly. The “C” in COMA stands for Convex
+because the software exploits the convex nature of the problem to
 efficiently find the global optimum.
 
 Financial support for developing COMA has come from the USDA National
