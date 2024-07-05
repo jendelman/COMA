@@ -96,7 +96,7 @@ read_data <- function(geno.file, kinship.file, ploidy, sex=NULL,
       }
     }
     
-    if ("sex" %in% colnames(parents)) {
+    if ("female" %in% colnames(parents)) {
       females <- intersect(parents$id[parents$female],matings)
       males <- intersect(parents$id[!parents$female],matings)
       stopifnot(length(females)>0 & length(males)>0)

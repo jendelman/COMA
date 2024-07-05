@@ -174,7 +174,6 @@ oma <- function(dF, parents, matings, ploidy, K,
     if (!sexed)
       colnames(om) <- replace(colnames(om),1:2,c("parent1","parent2"))
     
-    #diversity <- -sum(oc$value*log(oc$value))
     return(list(response=data.frame(dF1=round(dF1,4),
                            dF2=round(dF2,4), 
                            merit=result$value,
