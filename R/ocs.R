@@ -123,8 +123,8 @@ ocs <- function(dF, parents, ploidy, K, tol=1e-6,
     y.opt <- y.opt/sum(y.opt)
     
     if (sexed) {
-      y.f <- parents$female*y.opt
-      y.m <- (1-parents$female)*y.opt
+      y.f <- 2*parents$female*y.opt
+      y.m <- 2*(1-parents$female)*y.opt
     } else {
       y.f <- y.m <- y.opt
     }
@@ -135,7 +135,7 @@ ocs <- function(dF, parents, ploidy, K, tol=1e-6,
 
     oc$value <- y.opt
     oc <- oc[which(oc$value >= tol),,drop=FALSE]
-    #diversity <- -sum(oc$value*log(oc$value))
+    
     return(list(response=data.frame(dF=round(dF1,4), 
                            merit=result$value,
                            n.parent=nrow(oc)),oc=oc)) 

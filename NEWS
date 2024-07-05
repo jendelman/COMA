@@ -1,5 +1,5 @@
 Changes in 0.18
-* Fixed error for dioecious species in read_data
+* Fixed error for dioecious species in read_data and ocs
 
 Changed in 0.17
 * Fixed error with dF2 calculation in oma
