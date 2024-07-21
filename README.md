@@ -4,8 +4,8 @@ Jeffrey Endelman
 
 Breeders have long appreciated the need to balance selection for
 short-term genetic gain with maintaining genetic variance for long-term
-gain. The COMA package implements selection strategies known as Optimal
-Contribution Selection (OCS) and Optimal Mate Allocation (OMA). OCS
+gain. The COMA package implements selection strategies known as Optimum
+Contribution Selection (OCS) and Optimum Mate Allocation (OMA). OCS
 maximizes the average genomic-estimated breeding value (GEBV) of the
 parents, weighted by their contribution to the next generation. OMA
 maximizes the average genomic prediction of mate performance (GPMP),
@@ -17,7 +17,9 @@ efficiently find the global optimum.
 
 Financial support for developing COMA has come from the USDA National
 Institute of Food and Agriculture (NIFA) Award 2020-51181-32156. A
-manuscript describing the methods is in preparation. [Vignette
+[preprint
+manuscript](https://www.biorxiv.org/content/10.1101/2024.07.01.601581v1)
+about the software is available. [Vignette
 1](https://jendelman.github.io/COMA/Vignette1.html) provides examples of
 using the software with data from the University of Wisconsin-Madison
 potato breeding program.
