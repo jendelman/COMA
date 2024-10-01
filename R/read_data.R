@@ -13,8 +13,9 @@
 #' @param ploidy even integer
 #' @param sex optional, data frame with columns id and female (T/F)
 #' @param matings see Details
-#' @param standardize T/F, standardize merit in parental candidates
+#' @param standardize T/F, standardize merit based on additive std. dev.
 #' @param n.core multi-core evaluation
+#' @param partition T/F, partition matings as MPA, MPD, MPH for dominance model
 #'
 #' @return list containing
 #' \describe{
@@ -28,8 +29,8 @@
 #' @importFrom parallel makeCluster clusterExport parSapply parLapply stopCluster
 
 
-read_data <- function(geno.file, kinship.file, ploidy, sex=NULL, 
-                      matings="none", standardize=FALSE, n.core=1) {
+read_data <- function(geno.file, kinship.file, ploidy, sex=NULL, matings="none", 
+                      standardize=FALSE, n.core=1, partition=FALSE) {
   
   data <- read.csv(file = geno.file,check.names=F,row.names=1)
   dominance <- (colnames(data)[2]=="dom")
@@ -55,8 +56,6 @@ read_data <- function(geno.file, kinship.file, ploidy, sex=NULL,
   stopifnot(id %in% colnames(K))
   K <- K[id,id]
 
-  #predict merit
-  #OCS
   parents <- data.frame(id=id, add=as.numeric(coeff %*% effects[,1,drop=FALSE]))
   
   if (dominance) {
@@ -68,16 +67,17 @@ read_data <- function(geno.file, kinship.file, ploidy, sex=NULL,
   } else {
     parents$merit <- parents$add
   }
-  mean.merit <- mean(parents$merit)
-  sd.merit <- sd(parents$merit)
+  #mean.merit <- mean(parents$merit)
+  sd.merit <- sd(parents$add)
   if (standardize) 
-    parents$merit <- (parents$merit - mean.merit)/sd.merit
+    parents$merit <- parents$merit/sd.merit
   
   if (!is.null(sex)) {
     colnames(sex) <- c("id","female")
     parents <- merge(parents,sex)
   }
   
+  # matings
   MPH <- function(parents,ploidy,geno) {
     Xi <- geno[,parents[1]]
     Xj <- geno[,parents[2]]
@@ -119,8 +119,8 @@ read_data <- function(geno.file, kinship.file, ploidy, sex=NULL,
                       parents$add[match(matings$male,parents$id)])/2
     
   if (dominance) {
-    matings$merit <- matings$merit + 
-                      (parents$dom[match(matings$female,parents$id)] +
+    matings$MPA <- matings$merit
+    matings$MPD <- (parents$dom[match(matings$female,parents$id)] +
                        parents$dom[match(matings$male,parents$id)])/2
     
     mate.list <- split(as.matrix(matings[,1:2]),f=1:nrow(matings))
@@ -133,17 +133,33 @@ read_data <- function(geno.file, kinship.file, ploidy, sex=NULL,
       ans <- sapply(mate.list,MPH,ploidy=ploidy,geno=geno)
       #ans[is.na(ans)] <- 0
     }
-    matings$merit <- matings$merit + as.numeric(crossprod(ans,effects[,2]))
+    matings$MPH <- as.numeric(crossprod(ans,effects[,2]))
+    
+    if (standardize) {
+      matings$MPA <- matings$MPA/sd.merit
+      matings$MPD <- matings$MPD/sd.merit
+      matings$MPH <- matings$MPH/sd.merit
+    }
+    matings$merit <- matings$MPA + matings$MPD + matings$MPH
+  } else {
+    if (standardize) 
+      matings$merit <- matings$merit/sd.merit
   }
   
-  if (standardize)
-    matings$merit <- (matings$merit-mean.merit)/sd.merit
-  
   if (is.null(sex)) {
-    matings <- data.frame(parent1=matings$female, parent2=matings$male, 
+    if (!partition | !dominance) {
+      matings <- data.frame(parent1=matings$female, parent2=matings$male, 
                           merit=matings$merit)
+    } else {
+      matings <- data.frame(parent1=matings$female, parent2=matings$male, 
+                            matings[,c("MPA","MPD","MPH")])
+    }
   } else {
-    matings <- matings[,c("female","male","merit")]
+    if (!partition) {
+      matings <- matings[,c("female","male","merit")]
+    } else {
+      matings <- matings[,c("female","male","MPA","MPD","MPH")]
+    }
   }
   return(list(K=K, parents=parents[,setdiff(colnames(parents),c("add","dom"))], 
               matings=matings))

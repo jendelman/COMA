@@ -11,7 +11,8 @@ read_data(
   sex = NULL,
   matings = "none",
   standardize = FALSE,
-  n.core = 1
+  n.core = 1,
+  partition = FALSE
 )
 }
 \arguments{
@@ -25,9 +26,11 @@ read_data(
 
 \item{matings}{see Details}
 
-\item{standardize}{T/F, standardize merit in parental candidates}
+\item{standardize}{T/F, standardize merit based on additive std. dev.}
 
 \item{n.core}{multi-core evaluation}
+
+\item{partition}{T/F, partition matings as MPA, MPD, MPH for dominance model}
 }
 \value{
 list containing

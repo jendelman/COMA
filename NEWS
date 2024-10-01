@@ -1,3 +1,9 @@
+Changes in 0.19
+* dF lower bound in oma
+* standardize now uses additive s.d.
+* partition option in read_data
+* updated Vignette
+
 Changes in 0.18
 * Fixed error for dioecious species in read_data and ocs
 

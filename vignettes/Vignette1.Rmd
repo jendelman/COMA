@@ -16,6 +16,8 @@ opts_knit$set(root.dir="~/Box Sync/Endelman/Software/COMA")
 warnings(-1)
 ```
 
+The COMA package implements a new algorithm for optimum mate allocation (OMA), as well as the more traditional method, optimum contribution selection (OCS).
+
 COMA requires two input files. The first file contains the marker effects and allele dosage data for the parental candidates. Dominance marker effects are optional, but when included should correspond to a breeding value parameterization, including the effect of heterosis/inbreeding depression [(Endelman 2023)](https://doi.org/10.1007/s00122-023-04298-x). The `blup` command in [R/StageWise](https://github.com/jendelman/StageWise) is one option to compute marker effects. 
 
 The vignette dataset comes from the University of Wisconsin potato breeding program. There are 170 tetraploid clones genotyped at 12K markers, and the marker effects are derived from a multi-trait index.
@@ -26,7 +28,7 @@ geno <- read.csv(geno.file,check.names=F)
 geno[1:4,1:5]
 ```
 
-The second input file is the kinship matrix to control inbreeding. Based on simulation results (Endelman 2024), the pedigree (IBD) kinship matrix is recommended for either OCS or OMA. (Do not use the typical G matrix from genomic selection.) A pedigree kinship matrix is provided for the potato clones, estimated using R package [AGHmatrix](https://cran.r-project.org/web/packages/AGHmatrix/index.html).
+The second input file is the kinship matrix to control inbreeding. Based on simulation results (Endelman 2024), the pedigree IBD kinship matrix is recommended for either OCS or OMA. The kinship matrix for the potato clones was generated using R package [AGHmatrix](https://cran.r-project.org/web/packages/AGHmatrix/index.html).
 
 ```{r,fig.width=4,fig.height=4}
 K.file <- system.file("vignette_data", "kinship.csv", package = "COMA")
@@ -54,73 +56,79 @@ head(data$parents)
 head(data$matings)
 ```
 
-The `matings` argument for `read_data` indicates how to create the table of possible matings. The above example used "all", which creates all unique parental combinations. Consult the [function documentation](https://jendelman.github.io/COMA/manual.pdf) for other options. When argument `standardize` is TRUE, the trait is centered and scaled so that the parental population has zero mean and unit variance. This is for convenience when interpreting the response values.
+The `matings` argument for `read_data` indicates how to create the table of possible matings. The above example used "all", which creates all unique parental combinations. Consult the [function documentation](https://jendelman.github.io/COMA/manual.pdf) for other options. When `standardize`=TRUE, genetic values are scaled by the additive standard deviation ($\sigma_A$). This is for convenience when interpreting the response values.
 
 As shown above, the `parents` output contains the predicted merit (GEBV) for each individual. The `matings` output contains the predicted merit (F1 progeny mean) for each possible mating. For dioecious species (with separate sexes), a data frame with sex information is needed as argument `sex` in `read_data`, and the column headers for the matings are "female","male" instead of "parent1","parent2". 
 
-### OCS and OMA
+### OMA and OCS
 
-The `ocs` and `oma` functions are used to determine the optimal genetic contributions. Both require the argument `parents`, which must specify the minimum and maximum contributions. In this case we used min=0 and max=1 for all parents, but this can be tailored to each parent. For `oma`, the parental merits are not used, so this column is omitted. Rather, the merit of each mating is needed, along with its min and max. Based on simulation results and long-standing practice in animal breeding, inbreeding rates of 0.005 (0.5%) to 0.01 (1%) are recommended. However, this may not be feasible depending on the relatedness of the parents. As the results below show, the smallest feasible inbreeding rate was 1.5% for OCS and 1% for OMA.
+The first argument of the `oma` function is `dF`=c(min,max), which represents lower and upper bounds on the inbreeding rate for the next generation, dF1. The upper bound is also applied to the average inbreeding rate over two generations, dF2, assuming random mating of the progeny. The second argument, `parents`=data.frame(id,min,max), contains lower and upper bounds on the contribution of each parent (do not include a column for parental merit). The third argument, `matings`, is a data frame of the merit for each possible mating, as well as lower and upper bounds on the allocation.
 
 ```{r}
-parents <- data.frame(data$parents, min=0, max=1)
-dF <- 0.005*(1:4)
-
-ocs.ans <- list(4)
-ocs.response <- NULL
-for (i in 1:4) {
-  ocs.ans[[i]] <- ocs(dF=dF[i], parents=parents, ploidy=4, K=data$K)
-  ocs.response <- rbind(ocs.response,ocs.ans[[i]]$response)
-}
-kable(ocs.response,digits=3)
-
+parents <- data.frame(id=data$parents$id, min=0, max=1)
 matings <- data.frame(data$matings, min=0, max=1)
-oma.ans <- list(4)
-oma.response <- NULL
-for (i in 1:4) {
-  oma.ans[[i]] <- oma(dF=dF[i], parents=parents[,-2], matings=matings,
-                      ploidy=4, K=data$K)
-  oma.response <- rbind(oma.response,oma.ans[[i]]$response)
-}
-kable(oma.response,digits=3)
-
+ans0 <- oma(dF=c(-1,0.005), parents=parents, matings=matings, ploidy=4, K=data$K)
+ans0$response
 ```
 
-Because genetic merit is a linear function of the contribution/allocation variables, the optimal solution lies on the boundary of the domain. This results in *sparse* solutions where many variables are zero. The number of parents and matings with nonzero contribution are returned by the function, along with the genetic merit of the optimal solution. Because mid-parent heterosis is modeled with OMA but not OCS, the predicted merit is more accurate with OMA.
+The above result shows there is no feasible solution at 0.5% inbreeding for both generations, due to the relatedness of the clones. The argument `dF.adapt` can be used to automatically increasing the upper bound until a solution is found:
 
-Note the superiority of the OMA solution over OCS at the same value of dF: higher gains are achieved with simpler mating plans, which is particularly advantageous when matings require human intervention (i.e., when open-pollination is not feasible).
+```{r}
+ans1 <- oma(dF=c(-1,0.005), parents=parents, matings=matings, ploidy=4, K=data$K,
+            dF.adapt=list(step=0.001,max=0.05))
+ans1$response
+```
 
-As the inbreeding rate increased, the complexity of the mating plan decreased (i.e., fewer parents and matings). The `ocs` function returns a single realized inbreeding rate, which corresponds to the next generation. The `oma` function returns two values of dF: dF1 is the rate for the progeny under the optimized allocation, while dF2 would be the rate if grand-progeny were produced under random mating of the progeny. The constraint on dF2 is analogous to the group coancestry constraint of OCS (Endelman 2024) and typically active (i.e., dF2 is at the limit), while dF1 is not at the limit.  
+With no lower bound, a solution was found at dF2 = 0.8%, while the negative value for dF1 indicates the progeny would be 0.8% more outbred than the parents. When a similar approach was used in a simulation study (Endelman 2024), the population became trapped in a local optimum with limited long-term gain. Imposing a lower bound of 0.5% for dF1 led to more long-term gain in the simulation. As the following code shows, for the potato dataset, this required increasing the dF2 rate to 1.0%. 
 
-The optimal parental contributions are returned as `oc`, and optimal mate allocations are returned as `om`. The command `plot_ribbon` can be used to visualize the solution over multiple inbreeding rates.
+```{r}
+ans2 <- oma(dF=c(0.005,0.008), parents=parents, matings=matings, ploidy=4, K=data$K,
+            dF.adapt=list(step=0.001,max=0.05))
+ans2$response
+```
 
-```{r,fig.width=5,fig.height=4}
-#Compare OCS and OMA solutions for 1.5%
-summary(ocs.ans[[3]]$oc$value)
-summary(oma.ans[[3]]$oc$value)
+Interestingly, the second solution uses more parents even though the inbreeding rate is higher. The optimal parental contributions are returned as `oc`, and the optimal mate allocations are returned as `om`.  
 
+```{r}
+head(ans2$oc)
+head(ans2$om)
+```
+
+The parental contributions of the two solutions can be visually compared with the COMA function `plot_ribbon`:
+
+```{r,fig.width=5}
 library(ggplot2)
-oc <- lapply(oma.ans[2:4],"[[",'oc')
-names(oc) <- dF[2:4]
-plot_ribbon(oc) + theme(legend.text=element_text(size=6))
+plot_ribbon(oc=list(`-0.008`=ans1$oc,`0.005`=ans2$oc)) + 
+   theme(legend.key.size=unit(0.1,'cm'))
 ```
 
-```{r,fig.width=6,fig.height=4}
-library(ggplot2)
-f <- function(z){data.frame(id=apply(z$om[,1:2],1,paste,collapse="/"),
-                            value=z$om$value)}
-om <- lapply(oma.ans[2:4],f)
-names(om) <- dF[2:4]
-plot_ribbon(om) + ylab("Allocation") + 
-  theme(axis.text.x = element_text(angle=90,vjust=0.5)) +
-  theme(legend.text=element_text(size=6))
+COMA also has a function for OCS, which optimizes parental contributions but not specific matings. The arguments are similar, except dF is only a single number for the upper bound on group kinship, and the `parents` data frame includes a column for merit:
+
+```{r}
+par2 <- data.frame(data$parents, min=0, max=1)
+ans3 <- ocs(dF=0.005, parents=par2, ploidy=4, K=data$K, 
+            dF.adapt=list(step=0.001, max=0.05))
+ans3$response
 ```
+
+The smallest feasible inbreeding rate under OCS was 1.5%. The predicted merit is based on parental breeding values and therefore neglects specific combining ability (SCA). When SCA was accounted for, the OCS solution (using random mating) decreased from 1.2 to 1.0 $\sigma_A$.
+
+```{r}
+ocs.matings <- merge(expand.grid(parent1=ans3$oc$id,parent2=ans3$oc$id,stringsAsFactors = F),
+                     data$matings)
+i1 <- match(ocs.matings$parent1,ans3$oc$id)
+i2 <- match(ocs.matings$parent2,ans3$oc$id)
+ocs.matings$value <- ifelse(i1==i2,ans3$oc$value[i1]*ans3$oc$value[i1],
+                            2*ans3$oc$value[i1]*ans3$oc$value[i2]) 
+sum(ocs.matings$merit*ocs.matings$value)
+```
+
 
 ### Other Constraints
 
 Because COMA is based on convex optimization, additional linear constraints can be incorporated. The potato dataset contains presence/absence information for a genetic marker for potato virus Y resistance (PVYR), which is a critical trait. Two different selection approaches will be illustrated: (1) only allowing matings with a resistant parent; (2) imposing a lower bound on the R gene frequency. 
 
-The following code implements method 1:
+The following code implements method 1 with the 0.5% lower bound:
 
 ```{r}
 library(dplyr)
@@ -129,27 +137,25 @@ par.file <- system.file("vignette_data", "parents.csv",
 data2 <- read.csv(par.file)
 PVYR.id <- data2$id[data2$PVYR=="Y"]
 
-#original solution at dF=0.01
-ans0 <- oma.ans[[2]]
-
 #calculate proportion of matings with PVYR parent from previous solution
-n.mate <- ans0$response$n.mate
-nR <- sum(ans0$om$parent1 %in% PVYR.id | ans0$om$parent2 %in% PVYR.id)
+n.mate <- ans2$response$n.mate
+nR <- sum(ans2$om$parent1 %in% PVYR.id | ans2$om$parent2 %in% PVYR.id)
 
-#constraint method 1
-ans1 <- oma(dF=0.01, ploidy=4L, K=data$K, parents=parents[,-2], 
+#add constraint
+ans2a <- oma(dF=c(0.005,0.01), ploidy=4L, K=data$K, parents=parents, 
             matings=filter(matings, parent1%in%PVYR.id | parent2%in%PVYR.id))
 
 #calculate frequency of PVYR gene, assuming single copy in parents
-R.parents <- which(ans0$oc$id %in% PVYR.id)
-freq0 <- sum(ans0$oc$value[R.parents])*0.25
-R.parents <- which(ans1$oc$id %in% PVYR.id)
-freq1 <- sum(ans1$oc$value[R.parents])*0.25
+R.parents <- which(ans2$oc$id %in% PVYR.id)
+freq2 <- sum(ans2$oc$value[R.parents])*0.25
+
+R.parents <- which(ans2a$oc$id %in% PVYR.id)
+freq2a <- sum(ans2a$oc$value[R.parents])*0.25
 
 result <- data.frame(constraint=c("none","method 1"),
-                     rbind(ans0$response,ans1$response),
+                     rbind(ans2$response,ans2a$response),
                      prop.resistant.matings=c(nR/n.mate,1),
-                     Ry.freq=c(freq0,freq1))
+                     Ry.freq=c(freq2,freq2a))
 kable(result,digits=3)
 ```
 
@@ -159,18 +165,19 @@ Under method 2, the R gene frequency is constrained directly, which is less rest
 $$ \mathbf{s}^\prime \mathbf{y} \ge 0.125$$
 
 ```{r}
-parents2 <- data.frame(parents,
-                       gt0.125=ifelse(parents$id %in% PVYR.id, 0.25, 0))
-ans2 <- oma(dF=0.01, ploidy=4L, K=data$K, parents=parents2[,-2], 
-            matings=matings)
+par3 <- data.frame(parents,
+                   gt0.125=ifelse(parents$id %in% PVYR.id, 0.25, 0))
+ans2b <- oma(dF=c(0.005,0.01), ploidy=4L, K=data$K, parents=par3, matings=matings)
 
-R.parents <- which(ans2$oc$id %in% PVYR.id)
-freq2 <- sum(ans2$oc$value[R.parents])*0.25
+nR <- sum(ans2b$om$parent1 %in% PVYR.id | ans2b$om$parent2 %in% PVYR.id)
+R.parents <- which(ans2b$oc$id %in% PVYR.id)
+freq2b <- sum(ans2b$oc$value[R.parents])*0.25
 
-result <- data.frame(constraint=c("none","method 1","method 2"),
-                     rbind(ans0$response,ans1$response,ans2$response),
-                     Ry.freq=c(freq0,freq1,freq2))
+result <- rbind(result,
+                data.frame(constraint="method 2",ans2b$response,
+                           prop.resistant.matings=nR/n.mate, Ry.freq=freq2b))
+
 kable(result,digits=3)
 ```
 
-As expected, the merit under method 2 was higher than method 1.
+As expected, the predicted merit under method 2 was higher than method 1.

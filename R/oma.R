@@ -2,13 +2,15 @@
 #'
 #' Optimize the allocation for each mating
 #' 
+#' Originally, only an upper bound was placed on the average kinship of the progeny, according to \code{dF}. As of package v0.19, both lower and upper bounds are allowed by passing a vector of length 2. When a single number is supplied, it is interpreted as equal lower and upper bounds.
+#' 
 #' The first three columns of \code{parents} should be named "id", "min", "max", with an optional fourth column "female" to indicate sex in dioecious species. Additional columns can be used to specify constraints on linear combinations of the contributions. The values are the coefficients of the contribution variables, and the name of each column specifies the right-hand side of the constraint. Each name must begin with "lt","gt", or "eq", followed by a non-negative numeric value. For example, "lt0.5" means less than or equal to 0.5.
 #' 
 #' The data.frame \code{matings} has five columns: "female, male, merit, min, max" for dioecious species, or else "parent1, parent2, merit, min, max".
 #' 
 #' The average inbreeding coefficient of the current generation is based on all individuals in \code{K}, which may exceed the list of individuals in \code{parents}.
 #'
-#' It is possible that no feasible solution exists for the specified \code{dF}. Argument \code{dF.adapt} can be used to automatically progressively higher values.The software increases the dF limit by dF.adapt$step up to the smaller of dF.adapt$max or the realized value under the original dF, in an attempt to find a solution with less inbreeding. 
+#' It is possible that no feasible solution exists for the specified \code{dF}. Argument \code{dF.adapt} can be used to automatically increase the upper bound by dF.adapt$step up to dF.adapt$max. 
 #'
 #' @param dF inbreeding rate
 #' @param parents parents data frame (see Details)
@@ -32,6 +34,13 @@
 oma <- function(dF, parents, matings, ploidy, K,
                 tol=1e-6, dF.adapt=NULL, solver="ECOS") {
   
+  stopifnot(inherits(dF,"numeric"))
+  stopifnot(length(dF) <= 2L)
+  if (length(dF)==2L) {
+    stopifnot(dF[1] <= dF[2])
+  } else {
+    dF <- rep(dF,2)
+  }
   stopifnot(c("id","min","max") == colnames(parents)[1:3])
   parents$id <- as.character(parents$id)
   stopifnot(parents$max <= 1)
@@ -125,13 +134,16 @@ oma <- function(dF, parents, matings, ploidy, K,
   
   done <- FALSE
   while (!done) {
-    Ft1 <- dF+(1-dF)*Ft0
-    Ft2 <- dF*(2-dF)+(1-dF)^2*Ft0
+    Ft1.max <- dF[2]+(1-dF[2])*Ft0
+    Ft1.min <- dF[1]+(1-dF[1])*Ft0  
+    con2 <- c(con.list,
+                list((ploidy/2)*Kvec%*%x + (ploidy/2-1)*Fi%*%y <= (ploidy-1)*Ft1.max,
+                     (ploidy/2)*Kvec%*%x + (ploidy/2-1)*Fi%*%y >= (ploidy-1)*Ft1.min))
+    Ft2 <- dF[2]*(2-dF[2])+(1-dF[2])^2*Ft0
     
-    con2 <- c(con.list, 
-      list((ploidy/2)*Kvec%*%x + (ploidy/2-1)*Fi%*%y <= (ploidy-1)*Ft1,
+    con2 <- c(con2,
            (ploidy/2)*(ploidy-1)*quad_form(y,K) + 
-             (ploidy/2-1)*((ploidy/2-1)*Fi%*%y + ploidy/2*Kvec%*%x) <= (ploidy-1)^2*Ft2))
+             (ploidy/2-1)*((ploidy/2-1)*Fi%*%y + ploidy/2*Kvec%*%x) <= (ploidy-1)^2*Ft2)
     
     problem <- Problem(objective,con2)
     result <- suppressWarnings(solve(problem,solver=solver))
@@ -141,9 +153,9 @@ oma <- function(dF, parents, matings, ploidy, K,
       if (is.null(dF.adapt)) {
         done <- TRUE
       } else {
-        dF <- dF + dF.adapt$step
-        if (dF > dF.adapt$max)
-          done <- TRUE
+        dF[2] <- dF[2] + dF.adapt$step
+        if (dF[2] > dF.adapt$max)
+            done <- TRUE
       }
     }
   }

@@ -38,5 +38,5 @@ Additional columns can be used to specify constraints on linear combinations of 
 
 The average inbreeding coefficient of the current generation is based on all individuals in \code{K}, which may exceed the list of individuals in \code{parents}.
 
-It is possible that no feasible solution exists for the specified \code{dF}. Argument \code{dF.adapt} can be used to automatically progressively higher values.The software increases the dF limit by dF.adapt$step up to the smaller of dF.adapt$max or the realized value under the original dF, in an attempt to find a solution with less inbreeding.
+It is possible that no feasible solution exists for the specified \code{dF}. Argument \code{dF.adapt} can be used to automatically increase dF by dF.adapt$step up to dF.adapt$max.
 }
