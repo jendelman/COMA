@@ -12,7 +12,7 @@ ocs(
   tol = 1e-06,
   dF.adapt = NULL,
   solver = "ECOS",
-  inbred = FALSE
+  base = "current"
 )
 }
 \arguments{
@@ -30,7 +30,7 @@ ocs(
 
 \item{solver}{solver for CVXR (default is "ECOS")}
 
-\item{inbred}{use TRUE for inbred lines (see Details}
+\item{base}{Default is "current"; for inbred lines, use "RM" (see Details)}
 }
 \value{
 list containing
@@ -51,5 +51,5 @@ The average inbreeding coefficient of the current generation is based on all ind
 
 It is possible that no feasible solution exists for the specified \code{dF}. Argument \code{dF.adapt} can be used to automatically increase dF by dF.adapt$step up to dF.adapt$max.
 
-Use \code{inbred=TRUE} for inbred lines. This changes the base population for measuring inbreeding from the current population to a randomly mated progeny population (including selfing). This is sensible for managing diversity for long-term gain, and inbreeding rate is not even defined with respect to a fully inbred base population.
+By default, the current population is used as the base population for measuring inbreeding (\code{base}="current"). For inbred lines, the current population already has F=1, so inbreeding rate is not defined. Instead, use \code{base}="RM" to use a randomly mated progeny population (including selfing), which is sensible for managing diversity for long-term gain.
 }

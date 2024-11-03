@@ -12,7 +12,7 @@
 #'
 #' It is possible that no feasible solution exists for the specified \code{dF}. Argument \code{dF.adapt} can be used to automatically increase the upper bound by dF.adapt$step up to dF.adapt$max. 
 #' 
-#' Use \code{inbred=TRUE} for inbred lines. This changes the base population for measuring inbreeding from the current population to a randomly mated progeny population (including selfing). This is sensible for managing diversity for long-term gain, and inbreeding rate is not even defined with respect to a fully inbred base population.
+#' By default, the current population is used as the base population for measuring inbreeding (\code{base}="current"). For inbred lines, the current population already has F=1, so inbreeding rate is not defined. Instead, use \code{base}="RM" to use a randomly mated progeny population (including selfing), which is sensible for managing diversity for long-term gain.
 #'
 #' @param dF inbreeding rate
 #' @param parents parents data frame (see Details)
@@ -22,7 +22,7 @@
 #' @param tol tolerance, values below this set to 0
 #' @param dF.adapt see Details
 #' @param solver solver for CVXR (default is "ECOS")
-#' @param inbred use TRUE for inbred lines (see Details)
+#' @param base Default is "current"; for inbred lines, use "RM" (see Details)
 #' 
 #' @return list containing
 #' \describe{
@@ -35,7 +35,7 @@
 #' @export
 #' 
 oma <- function(dF, parents, matings, ploidy, K, tol=1e-6, 
-                dF.adapt=NULL, solver="ECOS", inbred=FALSE) {
+                dF.adapt=NULL, solver="ECOS", base="current") {
   
   stopifnot(inherits(dF,"numeric"))
   stopifnot(length(dF) <= 2L)
@@ -57,7 +57,7 @@ oma <- function(dF, parents, matings, ploidy, K, tol=1e-6,
   
   Fi <- matrix((ploidy*diag(K)-1)/(ploidy-1),nrow=1)
   Ft0 <- mean(as.numeric(Fi))
-  if (inbred) {
+  if (toupper(base)=="RM") {
     Ft0 <- (ploidy/2*mean(K) + (ploidy/2-1)*Ft0)/(ploidy-1)
   }
   
