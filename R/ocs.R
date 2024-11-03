@@ -10,6 +10,8 @@
 #' 
 #' It is possible that no feasible solution exists for the specified \code{dF}. Argument \code{dF.adapt} can be used to automatically increase dF by dF.adapt$step up to dF.adapt$max.
 #' 
+#' Use \code{inbred=TRUE} for inbred lines. This changes the base population for measuring inbreeding from the current population to a randomly mated progeny population (including selfing). This is sensible for managing diversity for long-term gain, and inbreeding rate is not even defined with respect to a fully inbred base population.
+#' 
 #' @param dF inbreeding rate 
 #' @param parents input data frame (see Details)
 #' @param ploidy ploidy
@@ -17,6 +19,7 @@
 #' @param tol tolerance, values below this set to 0
 #' @param dF.adapt see Details
 #' @param solver solver for CVXR (default is "ECOS")
+#' @param inbred use TRUE for inbred lines (see Details)
 #' 
 #' @return list containing
 #' \describe{
@@ -27,7 +30,7 @@
 #' @export
 #' 
 ocs <- function(dF, parents, ploidy, K, tol=1e-6, 
-                dF.adapt=NULL, solver="ECOS") {
+                dF.adapt=NULL, solver="ECOS", inbred=FALSE) {
   
   stopifnot(c("id","merit","min","max") == colnames(parents)[1:4])
   stopifnot(parents$max <= 1)
@@ -52,6 +55,9 @@ ocs <- function(dF, parents, ploidy, K, tol=1e-6,
   
   Fi <- matrix((ploidy*diag(K)-1)/(ploidy-1),nrow=1)
   Ft0 <- mean(as.numeric(Fi))
+  if (inbred) {
+    Ft0 <- (ploidy/2*mean(K) + (ploidy/2-1)*Ft0)/(ploidy-1)
+  }
   n <- nrow(parents)
   
   oc <- data.frame(id=parents$id, value=numeric(n),check.names=F)

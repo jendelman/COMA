@@ -1,3 +1,6 @@
+Changes in 0.20
+* "inbred" argument added to ocs and oma
+ 
 Changes in 0.19
 * dF lower bound in oma
 * standardize now uses additive s.d.

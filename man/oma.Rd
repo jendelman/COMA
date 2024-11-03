@@ -12,7 +12,8 @@ oma(
   K,
   tol = 1e-06,
   dF.adapt = NULL,
-  solver = "ECOS"
+  solver = "ECOS",
+  inbred = FALSE
 )
 }
 \arguments{
@@ -31,6 +32,8 @@ oma(
 \item{dF.adapt}{see Details}
 
 \item{solver}{solver for CVXR (default is "ECOS")}
+
+\item{inbred}{use TRUE for inbred lines (see Details)}
 }
 \value{
 list containing
@@ -52,5 +55,7 @@ The data.frame \code{matings} has five columns: "female, male, merit, min, max" 
 
 The average inbreeding coefficient of the current generation is based on all individuals in \code{K}, which may exceed the list of individuals in \code{parents}.
 
-It is possible that no feasible solution exists for the specified \code{dF}. Argument \code{dF.adapt} can be used to automatically increase the upper bound by dF.adapt$step up to dF.adapt$max.
+It is possible that no feasible solution exists for the specified \code{dF}. Argument \code{dF.adapt} can be used to automatically increase the upper bound by dF.adapt$step up to dF.adapt$max. 
+
+Use \code{inbred=TRUE} for inbred lines. This changes the base population for measuring inbreeding from the current population to a randomly mated progeny population (including selfing). This is sensible for managing diversity for long-term gain, and inbreeding rate is not even defined with respect to a fully inbred base population.
 }

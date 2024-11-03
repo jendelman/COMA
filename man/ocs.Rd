@@ -4,7 +4,16 @@
 \alias{ocs}
 \title{Optimal Contribution Selection}
 \usage{
-ocs(dF, parents, ploidy, K, tol = 1e-06, dF.adapt = NULL, solver = "ECOS")
+ocs(
+  dF,
+  parents,
+  ploidy,
+  K,
+  tol = 1e-06,
+  dF.adapt = NULL,
+  solver = "ECOS",
+  inbred = FALSE
+)
 }
 \arguments{
 \item{dF}{inbreeding rate}
@@ -20,6 +29,8 @@ ocs(dF, parents, ploidy, K, tol = 1e-06, dF.adapt = NULL, solver = "ECOS")
 \item{dF.adapt}{see Details}
 
 \item{solver}{solver for CVXR (default is "ECOS")}
+
+\item{inbred}{use TRUE for inbred lines (see Details}
 }
 \value{
 list containing
@@ -39,4 +50,6 @@ Additional columns can be used to specify constraints on linear combinations of 
 The average inbreeding coefficient of the current generation is based on all individuals in \code{K}, which may exceed the list of individuals in \code{parents}.
 
 It is possible that no feasible solution exists for the specified \code{dF}. Argument \code{dF.adapt} can be used to automatically increase dF by dF.adapt$step up to dF.adapt$max.
+
+Use \code{inbred=TRUE} for inbred lines. This changes the base population for measuring inbreeding from the current population to a randomly mated progeny population (including selfing). This is sensible for managing diversity for long-term gain, and inbreeding rate is not even defined with respect to a fully inbred base population.
 }
