@@ -28,7 +28,7 @@ geno <- read.csv(geno.file,check.names=F)
 geno[1:4,1:5]
 ```
 
-The second input file is the kinship matrix to control inbreeding. Based on simulation results (Endelman 2024), the pedigree IBD kinship matrix is recommended for either OCS or OMA. The kinship matrix for the potato clones was generated using R package [AGHmatrix](https://cran.r-project.org/web/packages/AGHmatrix/index.html).
+The second input file is the kinship matrix to control inbreeding. Based on simulation results [(Endelman 2024)](https://doi.org/10.1093/genetics/iyae193), the pedigree IBD kinship matrix is recommended for either OCS or OMA. The kinship matrix for the potato clones was generated using R package [AGHmatrix](https://cran.r-project.org/web/packages/AGHmatrix/index.html).
 
 ```{r,fig.width=4,fig.height=4}
 K.file <- system.file("vignette_data", "kinship.csv", package = "COMA")
@@ -79,7 +79,7 @@ ans1 <- oma(dF=c(-1,0.005), parents=parents, matings=matings, ploidy=4, K=data$K
 ans1$response
 ```
 
-With no lower bound, a solution was found at dF2 = 0.8%, while the negative value for dF1 indicates the progeny would be 0.8% more outbred than the parents. When a similar approach was used in a simulation study (Endelman 2024), the population became trapped in a local optimum with limited long-term gain. Imposing a lower bound of 0.5% for dF1 led to more long-term gain in the simulation. As the following code shows, for the potato dataset, this required increasing the dF2 rate to 1.0%. 
+With no lower bound, a solution was found at dF2 = 0.8%, while the negative value for dF1 indicates the progeny would be 0.8% more outbred than the parents. When a similar approach was used in a simulation study [(Endelman 2024)](https://doi.org/10.1093/genetics/iyae193), the population became trapped in a local optimum with limited long-term gain. Imposing a lower bound of 0.5% for dF1 led to more long-term gain in the simulation. As the following code shows, for the potato dataset, this required increasing the dF2 rate to 1.0%. 
 
 ```{r}
 ans2 <- oma(dF=c(0.005,0.008), parents=parents, matings=matings, ploidy=4, K=data$K,

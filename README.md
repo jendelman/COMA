@@ -16,13 +16,11 @@ because the software exploits the convex nature of the problem to
 efficiently find the global optimum.
 
 Financial support for developing COMA has come from the USDA National
-Institute of Food and Agriculture (NIFA) Award 2020-51181-32156. A
-[preprint
-manuscript](https://www.biorxiv.org/content/10.1101/2024.07.01.601581v2)
-about the software is available. [Vignette
-1](https://jendelman.github.io/COMA/Vignette1.html) provides examples of
-using the software with data from the University of Wisconsin-Madison
-potato breeding program.
+Institute of Food and Agriculture (NIFA) Award 2020-51181-32156. Please
+cite the [manuscript](https://doi.org/10.1093/genetics/iyae193) if you
+use it. [Vignette 1](https://jendelman.github.io/COMA/Vignette1.html)
+provides examples of using the software with data from the University of
+Wisconsin-Madison potato breeding program.
 
 To install and load the package:
 

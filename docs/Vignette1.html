@@ -365,9 +365,9 @@ index.</p>
 ## 3 solcap_snp_c2_36615   7.51  8.00     1.66      1.40
 ## 4 solcap_snp_c2_36658  46.53  4.71     4.00      2.00</code></pre>
 <p>The second input file is the kinship matrix to control inbreeding.
-Based on simulation results (Endelman 2024), the pedigree IBD kinship
-matrix is recommended for either OCS or OMA. The kinship matrix for the
-potato clones was generated using R package <a href="https://cran.r-project.org/web/packages/AGHmatrix/index.html">AGHmatrix</a>.</p>
+Based on simulation results <a href="https://doi.org/10.1093/genetics/iyae193">(Endelman 2024)</a>, the
+pedigree IBD kinship matrix is recommended for either OCS or OMA. The
+kinship matrix for the potato clones was generated using R package <a href="https://cran.r-project.org/web/packages/AGHmatrix/index.html">AGHmatrix</a>.</p>
 <div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a>K.file <span class="ot">&lt;-</span> <span class="fu">system.file</span>(<span class="st">&quot;vignette_data&quot;</span>, <span class="st">&quot;kinship.csv&quot;</span>, <span class="at">package =</span> <span class="st">&quot;COMA&quot;</span>)</span>
 <span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a></span>
 <span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a><span class="co">#preview files</span></span>
@@ -452,10 +452,11 @@ increasing the upper bound until a solution is found:</p>
 <p>With no lower bound, a solution was found at dF2 = 0.8%, while the
 negative value for dF1 indicates the progeny would be 0.8% more outbred
 than the parents. When a similar approach was used in a simulation study
-(Endelman 2024), the population became trapped in a local optimum with
-limited long-term gain. Imposing a lower bound of 0.5% for dF1 led to
-more long-term gain in the simulation. As the following code shows, for
-the potato dataset, this required increasing the dF2 rate to 1.0%.</p>
+<a href="https://doi.org/10.1093/genetics/iyae193">(Endelman 2024)</a>,
+the population became trapped in a local optimum with limited long-term
+gain. Imposing a lower bound of 0.5% for dF1 led to more long-term gain
+in the simulation. As the following code shows, for the potato dataset,
+this required increasing the dF2 rate to 1.0%.</p>
 <div class="sourceCode" id="cb17"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" tabindex="-1"></a>ans2 <span class="ot">&lt;-</span> <span class="fu">oma</span>(<span class="at">dF=</span><span class="fu">c</span>(<span class="fl">0.005</span>,<span class="fl">0.008</span>), <span class="at">parents=</span>parents, <span class="at">matings=</span>matings, <span class="at">ploidy=</span><span class="dv">4</span>, <span class="at">K=</span>data<span class="sc">$</span>K,</span>
 <span id="cb17-2"><a href="#cb17-2" tabindex="-1"></a>            <span class="at">dF.adapt=</span><span class="fu">list</span>(<span class="at">step=</span><span class="fl">0.001</span>,<span class="at">max=</span><span class="fl">0.05</span>))</span>
 <span id="cb17-3"><a href="#cb17-3" tabindex="-1"></a>ans2<span class="sc">$</span>response</span></code></pre></div>
