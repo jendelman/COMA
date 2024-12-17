@@ -184,3 +184,8 @@ kable(result,digits=3)
 ```
 
 As expected, the predicted merit under method 2 was higher than method 1.
+
+### Other measures of genetic merit
+
+The function `read_data` computes genetic merit based on genomic prediction of the progeny mean. But the `oma` and `ocs` functions are not limited to this definition; the user can supply their own merit values for each candidate parent or mating. For OCS, individual phenotypes can be used. For OMA, it is possible to incorporate progeny variance into the merit definition, e.g., through the "usefulness" criterion.
+

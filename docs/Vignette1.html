@@ -694,6 +694,16 @@ greater than or equal to 0.125: <span class="math display">\[
 <p>As expected, the predicted merit under method 2 was higher than
 method 1.</p>
 </div>
+<div id="other-measures-of-genetic-merit" class="section level3">
+<h3>Other measures of genetic merit</h3>
+<p>The function <code>read_data</code> computes genetic merit based on
+genomic prediction of the progeny mean. But the <code>oma</code> and
+<code>ocs</code> functions are not limited to this definition; the user
+can supply their own merit values for each candidate parent or mating.
+For OCS, individual phenotypes can be used. For OMA, it is possible to
+incorporate progeny variance into the merit definition, e.g., through
+the “usefulness” criterion.</p>
+</div>
 
 
 
