@@ -413,8 +413,9 @@ indicates how to create the table of possible matings. The above example
 used “all”, which creates all unique parental combinations. Consult the
 <a href="https://jendelman.github.io/COMA/manual.pdf">function
 documentation</a> for other options. When <code>standardize</code>=TRUE,
-genetic values are scaled by the additive standard deviation (<span class="math inline">\(\sigma_A\)</span>). This is for convenience when
-interpreting the response values.</p>
+genetic values are scaled by the standard deviation of the predicted
+additive values (which is less than the true additive sd under BLUP).
+This is for convenience when interpreting the response values.</p>
 <p>As shown above, the <code>parents</code> output contains the
 predicted merit (GEBV) for each individual. The <code>matings</code>
 output contains the predicted merit (F1 progeny mean) for each possible

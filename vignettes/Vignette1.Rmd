@@ -56,7 +56,7 @@ head(data$parents)
 head(data$matings)
 ```
 
-The `matings` argument for `read_data` indicates how to create the table of possible matings. The above example used "all", which creates all unique parental combinations. Consult the [function documentation](https://jendelman.github.io/COMA/manual.pdf) for other options. When `standardize`=TRUE, genetic values are scaled by the additive standard deviation ($\sigma_A$). This is for convenience when interpreting the response values.
+The `matings` argument for `read_data` indicates how to create the table of possible matings. The above example used "all", which creates all unique parental combinations. Consult the [function documentation](https://jendelman.github.io/COMA/manual.pdf) for other options. When `standardize`=TRUE, genetic values are scaled by the standard deviation of the predicted additive values (which is less than the true additive sd under BLUP). This is for convenience when interpreting the response values.
 
 As shown above, the `parents` output contains the predicted merit (GEBV) for each individual. The `matings` output contains the predicted merit (F1 progeny mean) for each possible mating. For dioecious species (with separate sexes), a data frame with sex information is needed as argument `sex` in `read_data`, and the column headers for the matings are "female","male" instead of "parent1","parent2". 
 
